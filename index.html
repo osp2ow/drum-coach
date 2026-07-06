@@ -8014,10 +8014,12 @@ function MusicScreen({
     loadMusicData().then(d => {
       setSongs(d?.songs || DEFAULT_SONGS);
       setRhythms(d?.rhythms || DEFAULT_RHYTHMS);
-      setGenreOrder(d?.genreOrder || Object.keys(GENRE_LABELS));
+      const order = d?.genreOrder || Object.keys(GENRE_LABELS);
+      setGenreOrder(order);
       setGenreNames(d?.genreNames || {
         ...GENRE_LABELS
       });
+      if (order.length > 0) setGenre(order[0]); // 순서상 맨 앞 장르를 기본 선택
     });
   }, []);
 
@@ -8026,10 +8028,12 @@ function MusicScreen({
     if (tab === "drummers" && drummers === null) {
       loadDrummerData().then(d => {
         setDrummers(d?.drummers || d || DEFAULT_DRUMMERS);
-        setDrummerGenreOrder(d?.drummerGenreOrder || Object.keys(DRUMMER_GENRES));
+        const order = d?.drummerGenreOrder || Object.keys(DRUMMER_GENRES);
+        setDrummerGenreOrder(order);
         setDrummerGenreNames(d?.drummerGenreNames || {
           ...DRUMMER_GENRES
         });
+        if (order.length > 0) setDrummerGenre(order[0]); // 순서상 맨 앞 장르를 기본 선택
       });
     }
   }, [tab]);
@@ -8635,6 +8639,7 @@ function MusicScreen({
       setGenreOrder(newOrder);
       setGenreNames(newNames);
       setSongs(newSongs);
+      if (!newOrder.includes(genre) && newOrder.length > 0) setGenre(newOrder[0]); // 선택 장르가 삭제됐으면 첫 장르로
       await saveMusicData({
         songs: newSongs,
         rhythms,
@@ -8654,6 +8659,7 @@ function MusicScreen({
       setDrummerGenreOrder(newOrder);
       setDrummerGenreNames(newNames);
       setDrummers(newDrummers);
+      if (!newOrder.includes(drummerGenre) && newOrder.length > 0) setDrummerGenre(newOrder[0]);
       await saveDrummerAll(newDrummers, newOrder, newNames);
       setManageDrummerGenres(false);
     },
