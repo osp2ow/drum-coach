@@ -7113,14 +7113,34 @@ const DrummerEditModal = memo(({
   const photoRef = useRef(item.photoUrl || "");
   const [photoPreview, setPhotoPreview] = useState(item.photoUrl || "");
   const fileInputRef = useRef(null);
+  const [compressing, setCompressing] = useState(false);
   const handleFileChange = e => {
     const file = e.target.files?.[0];
     if (!file) return;
+    setCompressing(true);
     const reader = new FileReader();
     reader.onload = () => {
-      const dataUrl = reader.result;
-      photoRef.current = dataUrl;
-      setPhotoPreview(dataUrl);
+      const img = new Image();
+      img.onload = () => {
+        // 240px 정사각형으로 축소 + JPEG 압축 (Firebase 저장 용량 최소화)
+        const SIZE = 240;
+        const canvas = document.createElement("canvas");
+        canvas.width = SIZE;
+        canvas.height = SIZE;
+        const ctx = canvas.getContext("2d");
+        // 중앙 크롭 후 리사이즈
+        const scale = Math.max(SIZE / img.width, SIZE / img.height);
+        const sw = SIZE / scale,
+          sh = SIZE / scale;
+        const sx = (img.width - sw) / 2,
+          sy = (img.height - sh) / 2;
+        ctx.drawImage(img, sx, sy, sw, sh, 0, 0, SIZE, SIZE);
+        const compressed = canvas.toDataURL("image/jpeg", 0.8);
+        photoRef.current = compressed;
+        setPhotoPreview(compressed);
+        setCompressing(false);
+      };
+      img.src = reader.result;
     };
     reader.readAsDataURL(file);
   };
@@ -7131,25 +7151,40 @@ const DrummerEditModal = memo(({
       marginBottom: 16
     }
   }, /*#__PURE__*/React.createElement("div", {
-    onClick: () => fileInputRef.current?.click(),
+    onClick: () => !compressing && fileInputRef.current?.click(),
     style: {
       width: 140,
       height: 140,
       borderRadius: 24,
-      cursor: "pointer",
+      cursor: compressing ? "wait" : "pointer",
       background: photoPreview ? `url(${photoPreview}) center/cover` : C.surface,
       border: `2px dashed ${C.border}`,
       display: "flex",
       alignItems: "center",
       justifyContent: "center",
-      overflow: "hidden"
+      overflow: "hidden",
+      position: "relative"
     }
-  }, !photoPreview && /*#__PURE__*/React.createElement("span", {
+  }, !photoPreview && !compressing && /*#__PURE__*/React.createElement("span", {
     style: {
       fontSize: 40,
       color: C.text4
     }
-  }, "📷")), /*#__PURE__*/React.createElement("input", {
+  }, "📷"), compressing && /*#__PURE__*/React.createElement("div", {
+    style: {
+      position: "absolute",
+      inset: 0,
+      background: "rgba(0,0,0,0.6)",
+      display: "flex",
+      alignItems: "center",
+      justifyContent: "center"
+    }
+  }, /*#__PURE__*/React.createElement("span", {
+    style: {
+      fontSize: 24,
+      animation: "dcspin 1s linear infinite"
+    }
+  }, "⏳"))), /*#__PURE__*/React.createElement("input", {
     ref: fileInputRef,
     type: "file",
     accept: "image/*",
@@ -7165,7 +7200,7 @@ const DrummerEditModal = memo(({
       marginBottom: 14,
       marginTop: -10
     }
-  }, "탭하여 사진 업로드 (선택)"), /*#__PURE__*/React.createElement(Field, {
+  }, compressing ? "사진 처리 중..." : "탭하여 사진 업로드 (선택)"), /*#__PURE__*/React.createElement(Field, {
     label: "드러머 이름",
     initialValue: item.name || "",
     onCommit: v => nameRef.current = v,
@@ -7198,8 +7233,8 @@ const DrummerEditModal = memo(({
       url: urlRef.current,
       photoUrl: photoRef.current
     }),
-    disabled: saving
-  }, saving ? "저장 중..." : "저장")));
+    disabled: saving || compressing
+  }, compressing ? "사진 처리 중..." : saving ? "저장 중..." : "저장")));
   return isMobile ? /*#__PURE__*/React.createElement(Sheet, {
     title: "드러머 편집",
     onClose: onCancel
