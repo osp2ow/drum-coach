@@ -1074,23 +1074,81 @@ const DEFAULT_DRUMMERS = {
     url: "https://youtu.be/QYnGyPny5Uc"
   }]
 };
+
+// 드러머는 한 명당 하나의 독립된 문서로 저장 (Firestore 1MB 문서 한도 회피)
 async function loadDrummerData() {
   const fs = typeof _fsdb !== "undefined" ? _fsdb : null;
   if (!fs) return null;
   try {
-    const d = await fs.collection("dc").doc("drummers").get();
-    return d.data()?.data || null;
-  } catch {
+    // 메타(장르 순서/이름) + 전체 드러머 문서들을 함께 로드
+    const metaDoc = await fs.collection("dc").doc("drummer_meta").get();
+    const meta = metaDoc.data() || {};
+    const snap = await fs.collection("dc_drummers").get();
+    const drummers = {};
+    snap.forEach(doc => {
+      const d = doc.data();
+      const genre = d.genre || "rock";
+      if (!drummers[genre]) drummers[genre] = [];
+      drummers[genre].push(d);
+    });
+    // 예전 방식(단일 문서)에서 아직 마이그레이션 안 된 경우를 위한 폴백
+    if (snap.empty) {
+      const oldDoc = await fs.collection("dc").doc("drummers").get();
+      const oldData = oldDoc.data()?.data;
+      if (oldData) {
+        return {
+          drummers: oldData.drummers || oldData,
+          drummerGenreOrder: oldData.drummerGenreOrder || meta.drummerGenreOrder,
+          drummerGenreNames: oldData.drummerGenreNames || meta.drummerGenreNames,
+          _legacy: true // 예전 단일 문서에서 읽어온 데이터임을 표시 (자동 마이그레이션 트리거)
+        };
+      }
+    }
+    return {
+      drummers,
+      drummerGenreOrder: meta.drummerGenreOrder,
+      drummerGenreNames: meta.drummerGenreNames
+    };
+  } catch (e) {
+    console.error("드러머 로드 실패:", e);
     return null;
   }
 }
+
+// 드러머 전체 저장: 각 드러머를 개별 문서로 분산 저장 + 메타 정보 별도 저장
 async function saveDrummerData(data) {
   const fs = typeof _fsdb !== "undefined" ? _fsdb : null;
   if (!fs) return;
-  await fs.collection("dc").doc("drummers").set({
-    data,
+  const drummersMap = data.drummers || {};
+  // 메타 정보(장르 순서/이름)는 작은 문서 하나에
+  await fs.collection("dc").doc("drummer_meta").set({
+    drummerGenreOrder: data.drummerGenreOrder || [],
+    drummerGenreNames: data.drummerGenreNames || {},
     t: Date.now()
   });
+  // 각 드러머는 개별 문서로 저장 (배치 처리)
+  const batch = fs.batch();
+  Object.entries(drummersMap).forEach(([genre, list]) => {
+    (list || []).forEach(dr => {
+      const ref = fs.collection("dc_drummers").doc(dr.id);
+      batch.set(ref, {
+        ...dr,
+        genre
+      });
+    });
+  });
+  await batch.commit();
+}
+
+// 드러머 개별 삭제 (목록에서 빠진 항목을 실제로 컬렉션에서도 제거)
+async function deleteDrummerDoc(id) {
+  const fs = typeof _fsdb !== "undefined" ? _fsdb : null;
+  if (!fs) return;
+  try {
+    await fs.collection("dc_drummers").doc(id).delete();
+  } catch (e) {
+    console.error("드러머 삭제 실패:", e);
+  }
 }
 
 /* ================================================================
@@ -8109,14 +8167,30 @@ function MusicScreen({
   // 드러머 탭을 처음 열 때만 로드
   useEffect(() => {
     if (tab === "drummers" && drummers === null) {
-      loadDrummerData().then(d => {
-        setDrummers(d?.drummers || d || DEFAULT_DRUMMERS);
-        const order = d?.drummerGenreOrder || Object.keys(DRUMMER_GENRES);
-        setDrummerGenreOrder(order);
-        setDrummerGenreNames(d?.drummerGenreNames || {
+      loadDrummerData().then(async d => {
+        // 저장된 드러머가 없으면(첫 실행) 기본값으로 초기화
+        const hasData = d && d.drummers && Object.keys(d.drummers).length > 0;
+        const finalDrummers = hasData ? d.drummers : DEFAULT_DRUMMERS;
+        const order = hasData && d.drummerGenreOrder && d.drummerGenreOrder.length > 0 ? d.drummerGenreOrder : Object.keys(DRUMMER_GENRES);
+        const names = hasData && d.drummerGenreNames ? d.drummerGenreNames : {
           ...DRUMMER_GENRES
-        });
-        if (order.length > 0) setDrummerGenre(order[0]); // 순서상 맨 앞 장르를 기본 선택
+        };
+        setDrummers(finalDrummers);
+        setDrummerGenreOrder(order);
+        setDrummerGenreNames(names);
+        if (order.length > 0) setDrummerGenre(order[0]);
+        // 예전 방식(단일 큰 문서)에서 읽어온 데이터라면, 새 구조(컬렉션 분산)로 즉시 재저장
+        if (d && d._legacy) {
+          try {
+            await saveDrummerData({
+              drummers: finalDrummers,
+              drummerGenreOrder: order,
+              drummerGenreNames: names
+            });
+          } catch (e) {
+            console.error("드러머 데이터 마이그레이션 실패:", e);
+          }
+        }
       });
     }
   }, [tab]);
@@ -8184,7 +8258,8 @@ function MusicScreen({
     };
     setDrummers(nd);
     try {
-      await saveDrummerAll(nd);
+      await deleteDrummerDoc(id); // 실제 개별 문서 삭제
+      await saveDrummerAll(nd); // 메타 정보(장르 순서 등) 갱신
     } catch (e) {
       console.error("드러머 삭제 실패:", e);
     }
