@@ -5932,10 +5932,11 @@ function GrowthScreen({
 const GenreManagerModal = memo(({
   genreOrder,
   genreNames,
-  songs,
+  dataMap,
   onSave,
   onClose,
-  isMobile
+  isMobile,
+  title
 }) => {
   const [localOrder, setLocalOrder] = useState([...genreOrder]);
   const [localNames, setLocalNames] = useState({
@@ -5976,13 +5977,13 @@ const GenreManagerModal = memo(({
     setNewLabel("");
   };
   const handleSave = () => {
-    const newSongs = {
-      ...songs
+    const newData = {
+      ...(dataMap || {})
     };
     localOrder.forEach(k => {
-      if (!newSongs[k]) newSongs[k] = [];
+      if (!newData[k]) newData[k] = [];
     });
-    onSave(localOrder, localNames, newSongs);
+    onSave(localOrder, localNames, newData);
   };
   const body = /*#__PURE__*/React.createElement("div", null, /*#__PURE__*/React.createElement("div", {
     style: {
@@ -6165,11 +6166,12 @@ const GenreManagerModal = memo(({
   }, "취소"), /*#__PURE__*/React.createElement(Btn, {
     onClick: handleSave
   }, "저장")));
+  const t = title || "장르 관리";
   return isMobile ? /*#__PURE__*/React.createElement(Sheet, {
-    title: "장르 관리",
+    title: t,
     onClose: onClose
   }, body) : /*#__PURE__*/React.createElement(Modal, {
-    title: "장르 관리",
+    title: t,
     onClose: onClose,
     width: 440
   }, body);
@@ -8003,10 +8005,13 @@ function MusicScreen({
   const [schools, setSchools] = useState(null);
   const [genreOrder, setGenreOrder] = useState(null);
   const [genreNames, setGenreNames] = useState(null);
+  const [drummerGenreOrder, setDrummerGenreOrder] = useState(null);
+  const [drummerGenreNames, setDrummerGenreNames] = useState(null);
   const [editing, setEditing] = useState(null);
   const [editingSchool, setEditingSchool] = useState(null);
   const [viewingSchool, setViewingSchool] = useState(null);
   const [manageGenres, setManageGenres] = useState(false);
+  const [manageDrummerGenres, setManageDrummerGenres] = useState(false);
   const [saving, setSaving] = useState(false);
   const isTeacher = user.role === "teacher";
   useEffect(() => {
@@ -8018,11 +8023,24 @@ function MusicScreen({
         ...GENRE_LABELS
       });
     });
-    loadDrummerData().then(d => setDrummers(d || DEFAULT_DRUMMERS));
+    loadDrummerData().then(d => {
+      setDrummers(d?.drummers || d || DEFAULT_DRUMMERS);
+      setDrummerGenreOrder(d?.drummerGenreOrder || Object.keys(DRUMMER_GENRES));
+      setDrummerGenreNames(d?.drummerGenreNames || {
+        ...DRUMMER_GENRES
+      });
+    });
     loadSchoolData().then(d => setSchools(d || DEFAULT_SCHOOLS));
   }, []);
 
-  // 드러머 저장/추가/삭제
+  // 드러머 저장/추가/삭제 (drummerGenreOrder, drummerGenreNames 함께 저장)
+  const saveDrummerAll = async (newDrummers, newOrder, newNames) => {
+    await saveDrummerData({
+      drummers: newDrummers || drummers,
+      drummerGenreOrder: newOrder || drummerGenreOrder,
+      drummerGenreNames: newNames || drummerGenreNames
+    });
+  };
   const handleSaveDrummer = async updated => {
     setSaving(true);
     const nd = {
@@ -8030,7 +8048,7 @@ function MusicScreen({
       [drummerGenre]: drummers[drummerGenre].map(d => d.id === updated.id ? updated : d)
     };
     setDrummers(nd);
-    await saveDrummerData(nd);
+    await saveDrummerAll(nd);
     setSaving(false);
     setEditing(null);
   };
@@ -8048,7 +8066,7 @@ function MusicScreen({
       [drummerGenre]: [...(drummers[drummerGenre] || []), nw]
     };
     setDrummers(nd);
-    await saveDrummerData(nd);
+    await saveDrummerAll(nd);
     setEditing({
       type: "drummer",
       item: nw
@@ -8060,7 +8078,7 @@ function MusicScreen({
       [drummerGenre]: drummers[drummerGenre].filter(d => d.id !== id)
     };
     setDrummers(nd);
-    await saveDrummerData(nd);
+    await saveDrummerAll(nd);
   };
 
   // 학교 저장/추가/삭제
@@ -8282,9 +8300,22 @@ function MusicScreen({
     }
   }, /*#__PURE__*/React.createElement("div", {
     style: {
+      background: C.surface,
+      borderBottom: `1px solid ${C.border}`,
+      padding: "12px 12px 14px"
+    }
+  }, /*#__PURE__*/React.createElement("div", {
+    style: {
+      fontSize: 11,
+      fontWeight: 700,
+      color: C.text3,
+      marginBottom: 8,
+      paddingLeft: 2,
+      letterSpacing: 0.3
+    }
+  }, "🎸 장르 선택"), /*#__PURE__*/React.createElement("div", {
+    style: {
       overflowX: "auto",
-      flexShrink: 0,
-      padding: "10px 12px",
       display: "flex",
       gap: 8,
       WebkitOverflowScrolling: "touch",
@@ -8294,34 +8325,37 @@ function MusicScreen({
     key: g,
     onClick: () => setGenre(g),
     style: {
-      padding: "6px 14px",
-      borderRadius: 20,
-      border: "none",
+      padding: "9px 18px",
+      borderRadius: 24,
+      border: genre === g ? "none" : `1.5px solid ${C.border}`,
       cursor: "pointer",
       fontFamily: "inherit",
-      fontSize: 12,
-      fontWeight: 700,
+      fontSize: 14,
+      fontWeight: 800,
       whiteSpace: "nowrap",
       background: genre === g ? C.accent : C.card,
-      color: genre === g ? "#fff" : C.text3,
+      color: genre === g ? "#fff" : C.text2,
+      boxShadow: genre === g ? `0 3px 10px ${C.accent}55` : "none",
+      transform: genre === g ? "scale(1.04)" : "scale(1)",
+      transition: "all .15s",
       flexShrink: 0
     }
   }, (genreNames || GENRE_LABELS)[g] || g)), isTeacher && /*#__PURE__*/React.createElement("button", {
     onClick: () => setManageGenres(true),
     style: {
-      padding: "6px 12px",
-      borderRadius: 20,
-      border: `1px dashed ${C.border}`,
+      padding: "9px 14px",
+      borderRadius: 24,
+      border: `1.5px dashed ${C.accent}`,
       cursor: "pointer",
       fontFamily: "inherit",
-      fontSize: 11,
+      fontSize: 12,
       fontWeight: 700,
       whiteSpace: "nowrap",
-      background: "none",
-      color: C.text3,
+      background: C.accentDim,
+      color: C.accent,
       flexShrink: 0
     }
-  }, "⚙️ 장르관리")), /*#__PURE__*/React.createElement("div", {
+  }, "⚙️ 장르관리"))), /*#__PURE__*/React.createElement("div", {
     style: {
       flex: 1,
       overflowY: "auto",
@@ -8579,7 +8613,8 @@ function MusicScreen({
   }, "+ 리듬 추가"))), manageGenres && /*#__PURE__*/React.createElement(GenreManagerModal, {
     genreOrder: genreOrder || Object.keys(GENRE_LABELS),
     genreNames: genreNames || GENRE_LABELS,
-    songs: songs,
+    dataMap: songs,
+    title: "추천곡 장르 관리",
     onSave: async (newOrder, newNames, newSongs) => {
       setGenreOrder(newOrder);
       setGenreNames(newNames);
@@ -8594,6 +8629,20 @@ function MusicScreen({
     },
     onClose: () => setManageGenres(false),
     isMobile: isMobile
+  }), manageDrummerGenres && /*#__PURE__*/React.createElement(GenreManagerModal, {
+    genreOrder: drummerGenreOrder || Object.keys(DRUMMER_GENRES),
+    genreNames: drummerGenreNames || DRUMMER_GENRES,
+    dataMap: drummers,
+    title: "드러머 장르 관리",
+    onSave: async (newOrder, newNames, newDrummers) => {
+      setDrummerGenreOrder(newOrder);
+      setDrummerGenreNames(newNames);
+      setDrummers(newDrummers);
+      await saveDrummerAll(newDrummers, newOrder, newNames);
+      setManageDrummerGenres(false);
+    },
+    onClose: () => setManageDrummerGenres(false),
+    isMobile: isMobile
   }), tab === "drummers" && /*#__PURE__*/React.createElement("div", {
     style: {
       flex: 1,
@@ -8603,30 +8652,62 @@ function MusicScreen({
     }
   }, /*#__PURE__*/React.createElement("div", {
     style: {
+      background: C.surface,
+      borderBottom: `1px solid ${C.border}`,
+      padding: "12px 12px 14px",
+      flexShrink: 0
+    }
+  }, /*#__PURE__*/React.createElement("div", {
+    style: {
+      fontSize: 11,
+      fontWeight: 700,
+      color: C.text3,
+      marginBottom: 8,
+      paddingLeft: 2,
+      letterSpacing: 0.3
+    }
+  }, "🌟 장르 선택"), /*#__PURE__*/React.createElement("div", {
+    style: {
       overflowX: "auto",
-      flexShrink: 0,
-      padding: "10px 12px",
       display: "flex",
       gap: 8,
       WebkitOverflowScrolling: "touch"
     }
-  }, Object.entries(DRUMMER_GENRES).map(([g, l]) => /*#__PURE__*/React.createElement("button", {
+  }, (drummerGenreOrder || Object.keys(DRUMMER_GENRES)).map(g => /*#__PURE__*/React.createElement("button", {
     key: g,
     onClick: () => setDrummerGenre(g),
     style: {
-      padding: "6px 14px",
-      borderRadius: 20,
-      border: "none",
+      padding: "9px 18px",
+      borderRadius: 24,
+      border: drummerGenre === g ? "none" : `1.5px solid ${C.border}`,
+      cursor: "pointer",
+      fontFamily: "inherit",
+      fontSize: 14,
+      fontWeight: 800,
+      whiteSpace: "nowrap",
+      background: drummerGenre === g ? C.accent : C.card,
+      color: drummerGenre === g ? "#fff" : C.text2,
+      boxShadow: drummerGenre === g ? `0 3px 10px ${C.accent}55` : "none",
+      transform: drummerGenre === g ? "scale(1.04)" : "scale(1)",
+      transition: "all .15s",
+      flexShrink: 0
+    }
+  }, (drummerGenreNames || DRUMMER_GENRES)[g] || g)), isTeacher && /*#__PURE__*/React.createElement("button", {
+    onClick: () => setManageDrummerGenres(true),
+    style: {
+      padding: "9px 14px",
+      borderRadius: 24,
+      border: `1.5px dashed ${C.accent}`,
       cursor: "pointer",
       fontFamily: "inherit",
       fontSize: 12,
       fontWeight: 700,
       whiteSpace: "nowrap",
-      background: drummerGenre === g ? C.accent : C.card,
-      color: drummerGenre === g ? "#fff" : C.text3,
+      background: C.accentDim,
+      color: C.accent,
       flexShrink: 0
     }
-  }, l))), /*#__PURE__*/React.createElement("div", {
+  }, "⚙️ 장르관리"))), /*#__PURE__*/React.createElement("div", {
     style: {
       flex: 1,
       overflowY: "auto",
