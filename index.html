@@ -3561,34 +3561,40 @@ function StudentDetail({
   const assignments = db.assignments.filter(a => a.teacherId === user.id && a.studentId === studentId).sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
   const handleSave = async data => {
     setSaving(true);
-    if (modal.type === "add") {
-      const a = {
-        id: uid(),
-        teacherId: user.id,
-        studentId,
-        ...data,
-        status: "assigned",
-        createdAt: now()
-      };
-      const na = [...db.assignments, a];
-      save("assignments", na);
-      setDB(d => ({
-        ...d,
-        assignments: na
-      }));
-    } else {
-      const na = db.assignments.map(a => a.id === modal.assignment.id ? {
-        ...a,
-        ...data
-      } : a);
-      save("assignments", na);
-      setDB(d => ({
-        ...d,
-        assignments: na
-      }));
+    try {
+      if (modal.type === "add") {
+        const a = {
+          id: uid(),
+          teacherId: user.id,
+          studentId,
+          ...data,
+          status: "assigned",
+          createdAt: now()
+        };
+        const na = [...db.assignments, a];
+        await save("assignments", na);
+        setDB(d => ({
+          ...d,
+          assignments: na
+        }));
+      } else {
+        const na = db.assignments.map(a => a.id === modal.assignment.id ? {
+          ...a,
+          ...data
+        } : a);
+        await save("assignments", na);
+        setDB(d => ({
+          ...d,
+          assignments: na
+        }));
+      }
+      setModal(null);
+    } catch (e) {
+      console.error("숙제 저장 실패:", e);
+      alert("저장에 실패했어요. 다시 시도해주세요.");
+    } finally {
+      setSaving(false);
     }
-    setSaving(false);
-    setModal(null);
   };
   const handleDelete = async id => {
     const na = db.assignments.filter(a => a.id !== id);
@@ -3818,12 +3824,18 @@ function ReviewScreen({
       createdAt: now()
     };
     const nc = [...db.comments, c];
-    save("comments", nc);
-    setDB(d => ({
-      ...d,
-      comments: nc
-    }));
-    setSaving(false);
+    try {
+      await save("comments", nc);
+      setDB(d => ({
+        ...d,
+        comments: nc
+      }));
+    } catch (e) {
+      console.error("댓글 저장 실패:", e);
+      alert("저장에 실패했어요. 다시 시도해주세요.");
+    } finally {
+      setSaving(false);
+    }
   };
   const updateComment = async (id, text) => {
     const nc = db.comments.map(c => c.id === id ? {
@@ -4516,13 +4528,19 @@ function AssignmentDetail({
       startedAt: now()
     };
     const ns = [...db.sessions, s];
-    save("sessions", ns);
-    setDB(d => ({
-      ...d,
-      sessions: ns
-    }));
-    setSaving(false);
-    setActiveModal(null);
+    try {
+      await save("sessions", ns);
+      setDB(d => ({
+        ...d,
+        sessions: ns
+      }));
+      setActiveModal(null);
+    } catch (e) {
+      console.error("연습기록 저장 실패:", e);
+      alert("저장에 실패했어요. 다시 시도해주세요.");
+    } finally {
+      setSaving(false);
+    }
   }, [db.sessions, assignmentId, user.id, setDB]);
   const saveLog = useCallback(async (text, editId = null) => {
     setSaving(true);
@@ -4542,13 +4560,19 @@ function AssignmentDetail({
         createdAt: now()
       }];
     }
-    save("logs", nl);
-    setDB(d => ({
-      ...d,
-      logs: nl
-    }));
-    setSaving(false);
-    setActiveModal(null);
+    try {
+      await save("logs", nl);
+      setDB(d => ({
+        ...d,
+        logs: nl
+      }));
+      setActiveModal(null);
+    } catch (e) {
+      console.error("연습일지 저장 실패:", e);
+      alert("저장에 실패했어요. 다시 시도해주세요.");
+    } finally {
+      setSaving(false);
+    }
   }, [db.logs, assignmentId, user.id, setDB]);
   const deleteLog = async id => {
     const nl = db.logs.filter(l => l.id !== id);
@@ -4610,15 +4634,21 @@ function AssignmentDetail({
       ...a,
       status: "submitted"
     } : a);
-    await save("submissions", ns);
-    save("assignments", na);
-    setDB(d => ({
-      ...d,
-      submissions: ns,
-      assignments: na
-    }));
-    setSaving(false);
-    setActiveModal(null);
+    try {
+      await save("submissions", ns);
+      await save("assignments", na);
+      setDB(d => ({
+        ...d,
+        submissions: ns,
+        assignments: na
+      }));
+      setActiveModal(null);
+    } catch (e) {
+      console.error("영상 제출 저장 실패:", e);
+      alert("저장에 실패했어요. 다시 시도해주세요.");
+    } finally {
+      setSaving(false);
+    }
   }, [db.submissions, db.assignments, assignmentId, user.id, setDB]);
   const deleteSubmission = async id => {
     const ns = db.submissions.filter(s => s.id !== id);
@@ -6875,11 +6905,17 @@ const VideoTimestampPlayer = memo(({
       authorName: "선생님",
       createdAt: now()
     }].sort((a, b) => a.time - b.time);
-    await onUpdateComments(nc);
-    commentRef.current = "";
-    setCommentVal("");
-    setAddMode(false);
-    setSaving(false);
+    try {
+      await onUpdateComments(nc);
+      commentRef.current = "";
+      setCommentVal("");
+      setAddMode(false);
+    } catch (e) {
+      console.error("피드백 저장 실패:", e);
+      alert("저장에 실패했어요. 다시 시도해주세요.");
+    } finally {
+      setSaving(false);
+    }
   };
   const delComment = async id => {
     await onUpdateComments(comments.filter(c => c.id !== id));
@@ -8107,9 +8143,15 @@ function MusicScreen({
       [drummerGenre]: drummers[drummerGenre].map(d => d.id === updated.id ? updated : d)
     };
     setDrummers(nd);
-    await saveDrummerAll(nd);
-    setSaving(false);
-    setEditing(null);
+    try {
+      await saveDrummerAll(nd);
+      setEditing(null);
+    } catch (e) {
+      console.error("드러머 저장 실패:", e);
+      alert("저장에 실패했어요. 다시 시도해주세요.");
+    } finally {
+      setSaving(false); // 성공하든 실패하든 반드시 저장중 상태 해제
+    }
   };
   const handleAddDrummer = async () => {
     const nw = {
@@ -8125,7 +8167,11 @@ function MusicScreen({
       [drummerGenre]: [...(drummers[drummerGenre] || []), nw]
     };
     setDrummers(nd);
-    await saveDrummerAll(nd);
+    try {
+      await saveDrummerAll(nd);
+    } catch (e) {
+      console.error("드러머 추가 실패:", e);
+    }
     setEditing({
       type: "drummer",
       item: nw
@@ -8137,7 +8183,11 @@ function MusicScreen({
       [drummerGenre]: drummers[drummerGenre].filter(d => d.id !== id)
     };
     setDrummers(nd);
-    await saveDrummerAll(nd);
+    try {
+      await saveDrummerAll(nd);
+    } catch (e) {
+      console.error("드러머 삭제 실패:", e);
+    }
   };
 
   // 학교 저장/추가/삭제
@@ -8145,9 +8195,15 @@ function MusicScreen({
     setSaving(true);
     const ns = schools.map(s => s.id === updated.id ? updated : s);
     setSchools(ns);
-    await saveSchoolData(ns);
-    setSaving(false);
-    setEditingSchool(null);
+    try {
+      await saveSchoolData(ns);
+      setEditingSchool(null);
+    } catch (e) {
+      console.error("학교 저장 실패:", e);
+      alert("저장에 실패했어요. 다시 시도해주세요.");
+    } finally {
+      setSaving(false);
+    }
   };
   const handleAddSchool = async () => {
     const nw = {
@@ -8201,12 +8257,18 @@ function MusicScreen({
       [genre]: songs[genre].map(s => s.id === updatedItem.id ? updatedItem : s)
     };
     setSongs(newSongs);
-    await saveMusicData({
-      songs: newSongs,
-      rhythms
-    });
-    setSaving(false);
-    setEditing(null);
+    try {
+      await saveMusicData({
+        songs: newSongs,
+        rhythms
+      });
+      setEditing(null);
+    } catch (e) {
+      console.error("곡 저장 실패:", e);
+      alert("저장에 실패했어요. 다시 시도해주세요.");
+    } finally {
+      setSaving(false);
+    }
   };
 
   // 곡 추가
@@ -8253,12 +8315,18 @@ function MusicScreen({
       [level]: rhythms[level].map(r => r.id === updatedItem.id ? updatedItem : r)
     };
     setRhythms(newRhythms);
-    await saveMusicData({
-      songs,
-      rhythms: newRhythms
-    });
-    setSaving(false);
-    setEditing(null);
+    try {
+      await saveMusicData({
+        songs,
+        rhythms: newRhythms
+      });
+      setEditing(null);
+    } catch (e) {
+      console.error("리듬 저장 실패:", e);
+      alert("저장에 실패했어요. 다시 시도해주세요.");
+    } finally {
+      setSaving(false);
+    }
   };
 
   // 리듬 추가
