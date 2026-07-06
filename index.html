@@ -7108,7 +7108,6 @@ const DrummerEditModal = memo(({
   isMobile
 }) => {
   const nameRef = useRef(item.name || "");
-  const bandRef = useRef(item.band || "");
   const descRef = useRef(item.desc || "");
   const urlRef = useRef(item.url || "");
   const photoRef = useRef(item.photoUrl || "");
@@ -7172,10 +7171,6 @@ const DrummerEditModal = memo(({
     onCommit: v => nameRef.current = v,
     autoFocus: true
   }), /*#__PURE__*/React.createElement(Field, {
-    label: "소속 밴드/활동",
-    initialValue: item.band || "",
-    onCommit: v => bandRef.current = v
-  }), /*#__PURE__*/React.createElement(Field, {
     label: "설명",
     initialValue: item.desc || "",
     onCommit: v => descRef.current = v,
@@ -7199,7 +7194,6 @@ const DrummerEditModal = memo(({
     onClick: () => onSave({
       ...item,
       name: nameRef.current,
-      band: bandRef.current,
       desc: descRef.current,
       url: urlRef.current,
       photoUrl: photoRef.current
@@ -8014,6 +8008,8 @@ function MusicScreen({
   const [manageDrummerGenres, setManageDrummerGenres] = useState(false);
   const [saving, setSaving] = useState(false);
   const isTeacher = user.role === "teacher";
+
+  // 지연 로딩: 처음엔 현재 탭(추천곡)만 로드, 다른 탭은 처음 클릭할 때 로드
   useEffect(() => {
     loadMusicData().then(d => {
       setSongs(d?.songs || DEFAULT_SONGS);
@@ -8023,15 +8019,27 @@ function MusicScreen({
         ...GENRE_LABELS
       });
     });
-    loadDrummerData().then(d => {
-      setDrummers(d?.drummers || d || DEFAULT_DRUMMERS);
-      setDrummerGenreOrder(d?.drummerGenreOrder || Object.keys(DRUMMER_GENRES));
-      setDrummerGenreNames(d?.drummerGenreNames || {
-        ...DRUMMER_GENRES
-      });
-    });
-    loadSchoolData().then(d => setSchools(d || DEFAULT_SCHOOLS));
   }, []);
+
+  // 드러머 탭을 처음 열 때만 로드
+  useEffect(() => {
+    if (tab === "drummers" && drummers === null) {
+      loadDrummerData().then(d => {
+        setDrummers(d?.drummers || d || DEFAULT_DRUMMERS);
+        setDrummerGenreOrder(d?.drummerGenreOrder || Object.keys(DRUMMER_GENRES));
+        setDrummerGenreNames(d?.drummerGenreNames || {
+          ...DRUMMER_GENRES
+        });
+      });
+    }
+  }, [tab]);
+
+  // 입시정보 탭을 처음 열 때만 로드
+  useEffect(() => {
+    if (tab === "schools" && schools === null) {
+      loadSchoolData().then(d => setSchools(d || DEFAULT_SCHOOLS));
+    }
+  }, [tab]);
 
   // 드러머 저장/추가/삭제 (drummerGenreOrder, drummerGenreNames 함께 저장)
   const saveDrummerAll = async (newDrummers, newOrder, newNames) => {
@@ -8242,15 +8250,23 @@ function MusicScreen({
       style: {
         flex: 1,
         display: "flex",
+        flexDirection: "column",
         alignItems: "center",
         justifyContent: "center"
       }
     }, /*#__PURE__*/React.createElement("div", {
       style: {
         fontSize: 40,
-        marginBottom: 12
+        marginBottom: 14,
+        animation: "dcspin 1.2s linear infinite"
       }
-    }, "🎵"));
+    }, "🎵"), /*#__PURE__*/React.createElement("div", {
+      style: {
+        fontSize: 13,
+        color: C.text3,
+        fontWeight: 600
+      }
+    }, "불러오는 중..."));
   }
   return /*#__PURE__*/React.createElement("div", {
     style: {
@@ -8713,7 +8729,23 @@ function MusicScreen({
       overflowY: "auto",
       padding: isMobile ? "8px 14px 24px" : "12px 24px 24px"
     }
-  }, drummers && (drummers[drummerGenre] || []).map(dr => /*#__PURE__*/React.createElement("div", {
+  }, !drummers && /*#__PURE__*/React.createElement("div", {
+    style: {
+      textAlign: "center",
+      padding: "40px 0"
+    }
+  }, /*#__PURE__*/React.createElement("div", {
+    style: {
+      fontSize: 32,
+      marginBottom: 10,
+      animation: "dcspin 1.2s linear infinite"
+    }
+  }, "🌟"), /*#__PURE__*/React.createElement("div", {
+    style: {
+      fontSize: 13,
+      color: C.text3
+    }
+  }, "드러머 목록 불러오는 중...")), drummers && (drummers[drummerGenre] || []).map(dr => /*#__PURE__*/React.createElement("div", {
     key: dr.id,
     style: {
       display: "flex",
@@ -8754,14 +8786,7 @@ function MusicScreen({
       fontWeight: 800,
       color: C.text
     }
-  }, dr.name), dr.band && /*#__PURE__*/React.createElement("div", {
-    style: {
-      fontSize: 13,
-      color: C.accent,
-      fontWeight: 600,
-      marginTop: 2
-    }
-  }, dr.band), dr.desc && /*#__PURE__*/React.createElement("div", {
+  }, dr.name), dr.desc && /*#__PURE__*/React.createElement("div", {
     style: {
       fontSize: 12,
       color: C.text3,
@@ -8849,7 +8874,23 @@ function MusicScreen({
       marginBottom: 14,
       lineHeight: 1.6
     }
-  }, "실용음악과 드럼 전공 대학 순위 및 입시 정보입니다. 학교를 눌러 상세 정보를 확인하세요."), schools && [...schools].sort((a, b) => a.rank - b.rank).map((sc, idx) => /*#__PURE__*/React.createElement("div", {
+  }, "실용음악과 드럼 전공 대학 순위 및 입시 정보입니다. 학교를 눌러 상세 정보를 확인하세요."), !schools && /*#__PURE__*/React.createElement("div", {
+    style: {
+      textAlign: "center",
+      padding: "40px 0"
+    }
+  }, /*#__PURE__*/React.createElement("div", {
+    style: {
+      fontSize: 32,
+      marginBottom: 10,
+      animation: "dcspin 1.2s linear infinite"
+    }
+  }, "🎓"), /*#__PURE__*/React.createElement("div", {
+    style: {
+      fontSize: 13,
+      color: C.text3
+    }
+  }, "학교 목록 불러오는 중...")), schools && [...schools].sort((a, b) => a.rank - b.rank).map((sc, idx) => /*#__PURE__*/React.createElement("div", {
     key: sc.id,
     style: {
       display: "flex",
