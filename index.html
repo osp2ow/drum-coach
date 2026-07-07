@@ -2414,7 +2414,8 @@ const CommentForm = memo(({
 const UploadForm = memo(({
   onSave,
   onCancel,
-  saving
+  saving,
+  uploadPct
 }) => {
   const [file, setFile] = useState(null);
   const [preview, setPreview] = useState(null);
@@ -2556,7 +2557,50 @@ const UploadForm = memo(({
     initialValue: "",
     onCommit: v => memoRef.current = v,
     placeholder: "이 영상에 대한 설명을 입력하세요"
-  }), /*#__PURE__*/React.createElement("div", {
+  }), saving && /*#__PURE__*/React.createElement("div", {
+    style: {
+      marginBottom: 14
+    }
+  }, /*#__PURE__*/React.createElement("div", {
+    style: {
+      display: "flex",
+      justifyContent: "space-between",
+      marginBottom: 6
+    }
+  }, /*#__PURE__*/React.createElement("span", {
+    style: {
+      fontSize: 12,
+      color: C.text3
+    }
+  }, "업로드 중..."), /*#__PURE__*/React.createElement("span", {
+    style: {
+      fontSize: 12,
+      color: C.accent,
+      fontWeight: 700
+    }
+  }, uploadPct || 0, "%")), /*#__PURE__*/React.createElement("div", {
+    style: {
+      background: C.border,
+      borderRadius: 99,
+      height: 6,
+      overflow: "hidden"
+    }
+  }, /*#__PURE__*/React.createElement("div", {
+    style: {
+      width: (uploadPct || 0) + "%",
+      height: "100%",
+      borderRadius: 99,
+      background: C.accent,
+      transition: "width .3s"
+    }
+  })), /*#__PURE__*/React.createElement("div", {
+    style: {
+      fontSize: 11,
+      color: C.text4,
+      marginTop: 6,
+      textAlign: "center"
+    }
+  }, "네트워크 상태에 따라 시간이 걸릴 수 있어요. 창을 닫지 말아주세요.")), /*#__PURE__*/React.createElement("div", {
     style: {
       display: "flex",
       gap: 8,
@@ -2564,11 +2608,12 @@ const UploadForm = memo(({
     }
   }, /*#__PURE__*/React.createElement(Btn, {
     onClick: onCancel,
-    variant: "secondary"
+    variant: "secondary",
+    disabled: saving
   }, "취소"), /*#__PURE__*/React.createElement(Btn, {
     onClick: handleSave,
     disabled: saving || !file
-  }, saving ? "업로드 중..." : "업로드")));
+  }, saving ? (uploadPct || 0) + "% 업로드 중" : "업로드")));
 });
 
 /* ── 영상 플레이어 (직접 src 전달 방식, 영상+음성 모두 재생) ── */
@@ -4650,6 +4695,7 @@ function AssignmentDetail({
     }));
     setConfirm(null);
   };
+  const [uploadPct, setUploadPct] = useState(0);
   const saveUpload = useCallback(async ({
     file,
     memo,
@@ -4658,21 +4704,54 @@ function AssignmentDetail({
     blobUrl
   }) => {
     setSaving(true);
+    setUploadPct(0);
     const expires = new Date();
     expires.setDate(expires.getDate() + 30);
     const subId = uid();
 
-    // Firebase Storage에 업로드 → 영구 URL 획득 (모든 기기에서 재생 가능)
+    // Firebase Storage에 업로드 → 영구 URL 획득 (진행률 추적 + 타임아웃 처리)
     let videoUrl = null;
     try {
       const storageRef = firebase.storage().ref("videos/" + user.id + "/" + assignmentId + "/" + subId);
-      await storageRef.put(file);
+      const task = storageRef.put(file);
+      await new Promise((resolve, reject) => {
+        // 3분 동안 진행이 전혀 없으면 타임아웃 처리 (무한 대기 방지)
+        let lastBytes = -1,
+          stuckTimer = null;
+        const resetStuckTimer = () => {
+          if (stuckTimer) clearTimeout(stuckTimer);
+          stuckTimer = setTimeout(() => {
+            task.cancel();
+            reject(new Error("업로드가 너무 오래 걸려 취소되었습니다. 네트워크 상태를 확인해주세요."));
+          }, 180000); // 3분
+        };
+        resetStuckTimer();
+        task.on("state_changed", snap => {
+          const pct = Math.round(snap.bytesTransferred / snap.totalBytes * 100);
+          setUploadPct(pct);
+          if (snap.bytesTransferred !== lastBytes) {
+            lastBytes = snap.bytesTransferred;
+            resetStuckTimer();
+          }
+        }, err => {
+          clearTimeout(stuckTimer);
+          reject(err);
+        }, () => {
+          clearTimeout(stuckTimer);
+          resolve();
+        });
+      });
       videoUrl = await storageRef.getDownloadURL();
       console.log("✅ 영상 업로드 완료:", videoUrl);
     } catch (e) {
       console.warn("Firebase Storage 업로드 실패, 세션 전용 blob 사용:", e.message);
-      // Storage 미설정 시 blob URL 세션 저장으로 폴백
+      // Storage 미설정/실패 시 blob URL 세션 저장으로 폴백 (이 기기에서만 재생 가능)
       if (blobUrl) VIDEO_STORE.set(subId, blobUrl);
+      if (!blobUrl) {
+        setSaving(false);
+        alert("영상 업로드에 실패했습니다: " + e.message);
+        return;
+      }
     }
     const sub = {
       id: subId,
@@ -5139,7 +5218,8 @@ function AssignmentDetail({
   }, /*#__PURE__*/React.createElement(UploadForm, {
     onSave: saveUpload,
     onCancel: () => setActiveModal(null),
-    saving: saving
+    saving: saving,
+    uploadPct: uploadPct
   })), confirm && /*#__PURE__*/React.createElement(ConfirmDialog, {
     message: confirm.type === "log" ? "이 연습일지를 삭제할까요?" : confirm.type === "session" ? "이 연습 기록을 삭제할까요?" : "이 영상을 삭제할까요?",
     onConfirm: () => {
