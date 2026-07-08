@@ -3836,7 +3836,7 @@ function StudentDetail({
       style: {
         display: "flex",
         justifyContent: "space-between",
-        marginBottom: 8,
+        marginBottom: 6,
         gap: 8
       }
     }, /*#__PURE__*/React.createElement("span", {
@@ -3855,6 +3855,12 @@ function StudentDetail({
     }, a.title), /*#__PURE__*/React.createElement(Badge, {
       status: a.status
     })), /*#__PURE__*/React.createElement("div", {
+      style: {
+        fontSize: 12,
+        color: C.text2,
+        marginBottom: 8
+      }
+    }, "📅 숙제 낸 날짜: ", fmtDate(a.createdAt)), /*#__PURE__*/React.createElement("div", {
       style: {
         display: "flex",
         gap: 12,
@@ -4652,8 +4658,8 @@ function StudentAssignments({
       status: a.status
     })), /*#__PURE__*/React.createElement("div", {
       style: {
-        fontSize: 11,
-        color: C.text4,
+        fontSize: 12,
+        color: C.text2,
         marginBottom: 8
       }
     }, "📅 숙제 받은 날짜: ", fmtDate(a.createdAt)), /*#__PURE__*/React.createElement("div", {
@@ -4938,13 +4944,13 @@ function AssignmentDetail({
     }
   }, /*#__PURE__*/React.createElement("div", {
     style: {
-      fontSize: 11,
-      color: C.text4,
+      fontSize: 12,
+      color: C.text2,
       marginBottom: 10
     }
   }, "📅 숙제 받은 날짜: ", /*#__PURE__*/React.createElement("span", {
     style: {
-      color: C.text3,
+      color: C.text,
       fontWeight: 600
     }
   }, fmtDate(assignment.createdAt))), /*#__PURE__*/React.createElement("div", {
