@@ -1493,7 +1493,7 @@ const Badge = ({
   const s = STATUS[status] || STATUS.assigned;
   return /*#__PURE__*/React.createElement("span", {
     style: {
-      fontSize: 11,
+      fontSize: 16,
       fontWeight: 700,
       padding: "3px 10px",
       borderRadius: 20,
@@ -1557,8 +1557,9 @@ const Field = memo(({
     borderRadius: 10,
     padding: "11px 13px",
     color: C.text,
-    fontSize: 15,
+    fontSize: 16,
     fontFamily: "inherit",
+    /* 16px: iOS 자동 확대 방지 */
     boxSizing: "border-box",
     outline: "none"
   };
@@ -1678,7 +1679,8 @@ const Btn = memo(({
 const Sheet = memo(({
   title,
   onClose,
-  children
+  children,
+  footer
 }) => /*#__PURE__*/React.createElement("div", {
   style: {
     position: "fixed",
@@ -1700,9 +1702,12 @@ const Sheet = memo(({
     background: C.card,
     borderRadius: "20px 20px 0 0",
     boxShadow: "0 -8px 40px rgba(0,0,0,0.7)",
-    maxHeight: "92vh",
+    height: "88vh",
+    maxHeight: "88vh",
+    /* 고정 높이: 버튼이 항상 화면 안에 위치 */
     display: "flex",
-    flexDirection: "column"
+    flexDirection: "column",
+    overflow: "hidden"
   }
 }, /*#__PURE__*/React.createElement("div", {
   style: {
@@ -1710,7 +1715,8 @@ const Sheet = memo(({
     height: 4,
     borderRadius: 99,
     background: C.border,
-    margin: "12px auto 0"
+    margin: "12px auto 0",
+    flexShrink: 0
   }
 }), /*#__PURE__*/React.createElement("div", {
   style: {
@@ -1739,12 +1745,22 @@ const Sheet = memo(({
   }
 }, "닫기")), /*#__PURE__*/React.createElement("div", {
   style: {
+    flex: 1,
+    minHeight: 0,
     overflowY: "auto",
-    padding: "16px 20px 36px",
+    padding: "16px 20px",
     /* iOS 키보드가 올라올 때 스크롤 유지 */
     WebkitOverflowScrolling: "touch"
   }
-}, children))));
+}, children), footer && /*#__PURE__*/React.createElement("div", {
+  style: {
+    flexShrink: 0,
+    padding: "12px 20px",
+    paddingBottom: "max(env(safe-area-inset-bottom,14px),14px)",
+    borderTop: `1px solid ${C.border}`,
+    background: C.card
+  }
+}, footer))));
 
 /* ── 데스크탑 모달 ──────────────────────────────────────────── */
 const Modal = memo(({
@@ -2419,7 +2435,7 @@ const CommentForm = memo(({
       borderRadius: 10,
       padding: "11px 13px",
       color: C.text,
-      fontSize: 15,
+      fontSize: 16,
       fontFamily: "inherit",
       outline: "none",
       resize: "vertical",
@@ -3369,7 +3385,7 @@ function TeacherStudents({
       borderRadius: 10,
       padding: "10px 12px",
       color: C.text,
-      fontSize: 14,
+      fontSize: 16,
       fontFamily: "inherit",
       outline: "none",
       boxSizing: "border-box",
@@ -3554,7 +3570,7 @@ function TeacherStudents({
       border: `1px solid ${C.border}`,
       borderRadius: 10,
       color: C.text,
-      fontSize: 14,
+      fontSize: 16,
       fontFamily: "inherit",
       boxSizing: "border-box",
       outline: "none"
@@ -6314,7 +6330,7 @@ const GenreManagerModal = memo(({
       borderRadius: 6,
       padding: "5px 8px",
       color: C.text,
-      fontSize: 13,
+      fontSize: 16,
       fontFamily: "inherit",
       outline: "none"
     }
@@ -6383,7 +6399,7 @@ const GenreManagerModal = memo(({
       borderRadius: 8,
       padding: "7px 10px",
       color: C.text,
-      fontSize: 12,
+      fontSize: 16,
       fontFamily: "inherit",
       outline: "none"
     }
@@ -6398,7 +6414,7 @@ const GenreManagerModal = memo(({
       borderRadius: 8,
       padding: "7px 10px",
       color: C.text,
-      fontSize: 12,
+      fontSize: 16,
       fontFamily: "inherit",
       outline: "none"
     }
@@ -7334,7 +7350,7 @@ const VideoTimestampPlayer = memo(({
       borderRadius: 10,
       padding: "10px 12px",
       color: C.text,
-      fontSize: 14,
+      fontSize: 16,
       fontFamily: "inherit",
       outline: "none"
     }
@@ -7411,7 +7427,7 @@ const VideoTimestampPlayer = memo(({
           borderRadius: 8,
           padding: "8px 10px",
           color: C.text,
-          fontSize: 13,
+          fontSize: 16,
           fontFamily: "inherit",
           outline: "none"
         }
@@ -7957,7 +7973,7 @@ const RoutineManagerModal = memo(({
       borderRadius: 6,
       padding: "5px 8px",
       color: C.text,
-      fontSize: 13,
+      fontSize: 16,
       fontFamily: "inherit",
       outline: "none"
     }
@@ -8009,7 +8025,7 @@ const RoutineManagerModal = memo(({
       borderRadius: 10,
       padding: "10px 12px",
       color: C.text,
-      fontSize: 14,
+      fontSize: 16,
       fontFamily: "inherit",
       outline: "none",
       boxSizing: "border-box"
@@ -8033,7 +8049,7 @@ const RoutineManagerModal = memo(({
       borderRadius: 10,
       padding: "8px 10px",
       color: C.text,
-      fontSize: 12,
+      fontSize: 16,
       fontFamily: "inherit",
       outline: "none",
       width: "100%",
@@ -8052,7 +8068,7 @@ const RoutineManagerModal = memo(({
       borderRadius: 10,
       padding: "8px 10px",
       color: C.text,
-      fontSize: 12,
+      fontSize: 16,
       fontFamily: "inherit",
       outline: "none",
       width: "100%",
@@ -8071,7 +8087,7 @@ const RoutineManagerModal = memo(({
       borderRadius: 10,
       padding: "8px 10px",
       color: C.text,
-      fontSize: 12,
+      fontSize: 16,
       fontFamily: "inherit",
       outline: "none",
       width: "100%",
@@ -8083,7 +8099,8 @@ const RoutineManagerModal = memo(({
     onClick: addItem,
     disabled: !newText.trim(),
     fullWidth: true
-  }, "+ 항목 추가")), /*#__PURE__*/React.createElement("div", {
+  }, "+ 항목 추가")));
+  const footerBtns = /*#__PURE__*/React.createElement("div", {
     style: {
       display: "flex",
       gap: 8,
@@ -8094,15 +8111,16 @@ const RoutineManagerModal = memo(({
     variant: "secondary"
   }, "취소"), /*#__PURE__*/React.createElement(Btn, {
     onClick: () => onSave(list)
-  }, "저장")));
+  }, "저장"));
   return isMobile ? /*#__PURE__*/React.createElement(Sheet, {
     title: "루틴 관리",
-    onClose: onClose
+    onClose: onClose,
+    footer: footerBtns
   }, body) : /*#__PURE__*/React.createElement(Modal, {
     title: "루틴 관리",
     onClose: onClose,
     width: 440
-  }, body);
+  }, body, footerBtns);
 });
 
 /* ── 루틴 카드 ───────────────────────────────────────────── */
@@ -8344,7 +8362,8 @@ const RoutineDetailModal = memo(({
       fontWeight: 800,
       color: C.accent
     }
-  }, h.bpm, " BPM")))))), /*#__PURE__*/React.createElement("div", {
+  }, h.bpm, " BPM")))))));
+  const footerBtns = /*#__PURE__*/React.createElement("div", {
     style: {
       display: "flex",
       gap: 8
@@ -8356,15 +8375,16 @@ const RoutineDetailModal = memo(({
     onClick: onStartPractice,
     fullWidth: true,
     size: "lg"
-  }, "🥁 연습 시작하기")));
+  }, "🥁 연습 시작하기"));
   return isMobile ? /*#__PURE__*/React.createElement(Sheet, {
     title: "루틴 상세정보",
-    onClose: onClose
+    onClose: onClose,
+    footer: footerBtns
   }, body) : /*#__PURE__*/React.createElement(Modal, {
     title: "루틴 상세정보",
     onClose: onClose,
     width: 440
-  }, body);
+  }, body, footerBtns);
 });
 const RoutineCard = memo(({
   user,
@@ -10072,7 +10092,7 @@ const TeacherNotesCard = memo(({
       background: "none",
       border: "none",
       color: C.text,
-      fontSize: 13,
+      fontSize: 16,
       fontFamily: "inherit",
       outline: "none",
       padding: 0
@@ -10115,7 +10135,7 @@ const TeacherNotesCard = memo(({
       borderRadius: 10,
       padding: "8px 12px",
       color: C.text,
-      fontSize: 13,
+      fontSize: 16,
       fontFamily: "inherit",
       outline: "none"
     },
@@ -10229,7 +10249,7 @@ const DataBackupCard = memo(({
       borderRadius: 10,
       padding: "10px 12px",
       color: C.text,
-      fontSize: 12,
+      fontSize: 16,
       fontFamily: "monospace",
       resize: "vertical",
       boxSizing: "border-box",
@@ -10268,7 +10288,7 @@ const DataBackupCard = memo(({
       borderRadius: 10,
       padding: "10px 12px",
       color: C.text,
-      fontSize: 11,
+      fontSize: 16,
       fontFamily: "monospace",
       resize: "vertical",
       boxSizing: "border-box",
