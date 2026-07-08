@@ -4009,6 +4009,61 @@ function ReviewScreen({
     }
   }, /*#__PURE__*/React.createElement(Card, {
     style: {
+      padding: 16,
+      background: C.accentDim2,
+      border: `1px solid ${C.accentDim}`
+    }
+  }, /*#__PURE__*/React.createElement("div", {
+    style: {
+      fontSize: 15,
+      fontWeight: 800,
+      color: C.text,
+      marginBottom: 8
+    }
+  }, assignment.title), /*#__PURE__*/React.createElement("div", {
+    style: {
+      fontSize: 11,
+      fontWeight: 700,
+      color: C.accent,
+      marginBottom: 6,
+      letterSpacing: 0.3
+    }
+  }, "📋 숙제 내용"), /*#__PURE__*/React.createElement("div", {
+    style: {
+      fontSize: 14,
+      color: assignment.detail ? C.text : C.text4,
+      lineHeight: 1.7,
+      whiteSpace: "pre-line",
+      marginBottom: 10,
+      padding: "10px 12px",
+      background: C.surface,
+      borderRadius: 8,
+      fontStyle: assignment.detail ? "normal" : "italic"
+    }
+  }, assignment.detail || "등록된 숙제 설명이 없습니다."), /*#__PURE__*/React.createElement("div", {
+    style: {
+      display: "flex",
+      gap: 16,
+      flexWrap: "wrap"
+    }
+  }, assignment.targetBpm && /*#__PURE__*/React.createElement("span", {
+    style: {
+      fontSize: 12,
+      color: C.accent,
+      fontWeight: 600
+    }
+  }, "🎵 목표 ", assignment.targetBpm, " BPM"), assignment.targetDurationMinutes && /*#__PURE__*/React.createElement("span", {
+    style: {
+      fontSize: 12,
+      color: C.text3
+    }
+  }, "⏱ 목표 ", assignment.targetDurationMinutes, "분"), /*#__PURE__*/React.createElement("span", {
+    style: {
+      fontSize: 12,
+      color: C.text4
+    }
+  }, "📅 ", fmtDate(assignment.createdAt), " 발행"))), /*#__PURE__*/React.createElement(Card, {
+    style: {
       padding: 0,
       overflow: "hidden"
     }
@@ -4020,7 +4075,7 @@ function ReviewScreen({
         ...s,
         timelineComments: nc
       } : s);
-      save("submissions", ns);
+      await save("submissions", ns);
       setDB(d => ({
         ...d,
         submissions: ns
@@ -7021,6 +7076,9 @@ const VideoTimestampPlayer = memo(({
   const [commentVal, setCommentVal] = useState("");
   const commentRef = useRef("");
   const [saving, setSaving] = useState(false);
+  const [editingId, setEditingId] = useState(null); // 편집 중인 댓글 id
+  const [editVal, setEditVal] = useState(""); // 편집 중인 텍스트
+  const editRef = useRef("");
   const comments = (submission && submission.timelineComments || []).slice().sort((a, b) => a.time - b.time);
   const ft = s => {
     const m = Math.floor(s / 60);
@@ -7046,17 +7104,46 @@ const VideoTimestampPlayer = memo(({
     try {
       await onUpdateComments(nc);
       commentRef.current = "";
-      setCommentVal("");
-      setAddMode(false);
     } catch (e) {
       console.error("피드백 저장 실패:", e);
       alert("저장에 실패했어요. 다시 시도해주세요.");
     } finally {
+      setCommentVal("");
+      setAddMode(false);
       setSaving(false);
     }
   };
   const delComment = async id => {
-    await onUpdateComments(comments.filter(c => c.id !== id));
+    try {
+      await onUpdateComments(comments.filter(c => c.id !== id));
+    } catch (e) {
+      console.error("삭제 실패:", e);
+      alert("삭제에 실패했어요.");
+    }
+  };
+  const startEdit = c => {
+    editRef.current = c.text;
+    setEditVal(c.text);
+    setEditingId(c.id);
+  };
+  const saveEdit = async id => {
+    const txt = editRef.current.trim();
+    if (!txt) return;
+    setSaving(true);
+    try {
+      const nc = comments.map(c => c.id === id ? {
+        ...c,
+        text: txt,
+        editedAt: now()
+      } : c);
+      await onUpdateComments(nc);
+      setEditingId(null);
+    } catch (e) {
+      console.error("피드백 수정 실패:", e);
+      alert("수정에 실패했어요. 다시 시도해주세요.");
+    } finally {
+      setSaving(false);
+    }
   };
   if (!src) return /*#__PURE__*/React.createElement("div", {
     style: {
@@ -7165,45 +7252,61 @@ const VideoTimestampPlayer = memo(({
       fontSize: 11,
       color: C.orange,
       fontWeight: 700,
-      marginBottom: 5
+      marginBottom: 6
     }
-  }, "📍 ", ft(curTime), " 시점"), /*#__PURE__*/React.createElement("div", {
-    style: {
-      display: "flex",
-      gap: 6
-    }
-  }, /*#__PURE__*/React.createElement("input", {
+  }, "📍 ", ft(curTime), " 시점"), /*#__PURE__*/React.createElement("textarea", {
     value: commentVal,
     onChange: e => {
       setCommentVal(e.target.value);
       commentRef.current = e.target.value;
     },
-    placeholder: "이 시점에 피드백 입력...",
+    placeholder: "이 시점에 대한 피드백을 자세히 입력하세요...",
     autoFocus: true,
-    onKeyDown: e => e.key === "Enter" && addComment(),
+    rows: 3,
+    onKeyDown: e => {
+      if (e.key === "Enter" && (e.metaKey || e.ctrlKey)) addComment();
+    },
     style: {
-      flex: 1,
+      width: "100%",
+      boxSizing: "border-box",
       background: C.bg,
       border: "1px solid " + C.accent,
-      borderRadius: 8,
-      padding: "8px 10px",
+      borderRadius: 10,
+      padding: "10px 12px",
       color: C.text,
-      fontSize: 13,
+      fontSize: 14,
       fontFamily: "inherit",
-      outline: "none"
+      outline: "none",
+      resize: "vertical",
+      minHeight: 70,
+      marginBottom: 8,
+      lineHeight: 1.6
     }
-  }), /*#__PURE__*/React.createElement(Btn, {
-    onClick: addComment,
-    disabled: !commentVal.trim() || saving,
-    size: "sm"
-  }, saving ? "..." : "추가"), /*#__PURE__*/React.createElement(Btn, {
+  }), /*#__PURE__*/React.createElement("div", {
+    style: {
+      fontSize: 10,
+      color: C.text4,
+      marginBottom: 8
+    }
+  }, "⌘/Ctrl + Enter로 빠르게 추가"), /*#__PURE__*/React.createElement("div", {
+    style: {
+      display: "flex",
+      gap: 8,
+      justifyContent: "flex-end"
+    }
+  }, /*#__PURE__*/React.createElement(Btn, {
     onClick: () => {
       setAddMode(false);
       setCommentVal("");
+      commentRef.current = "";
     },
     variant: "secondary",
     size: "sm"
-  }, "취소")))), comments.length > 0 && /*#__PURE__*/React.createElement("div", {
+  }, "취소"), /*#__PURE__*/React.createElement(Btn, {
+    onClick: addComment,
+    disabled: !commentVal.trim() || saving,
+    size: "sm"
+  }, saving ? "저장 중..." : "추가")))), comments.length > 0 && /*#__PURE__*/React.createElement("div", {
     style: {
       marginTop: 10,
       display: "flex",
@@ -7217,53 +7320,125 @@ const VideoTimestampPlayer = memo(({
       color: C.text3,
       marginBottom: 2
     }
-  }, "💬 시점별 피드백"), comments.map(c => /*#__PURE__*/React.createElement("div", {
-    key: c.id,
-    onClick: () => seekTo(c.time),
-    style: {
-      display: "flex",
-      alignItems: "flex-start",
-      gap: 8,
-      padding: "8px 10px",
-      borderRadius: 8,
-      background: C.surface,
-      cursor: "pointer",
-      border: "1px solid " + C.border
-    },
-    onMouseEnter: e => e.currentTarget.style.background = C.card,
-    onMouseLeave: e => e.currentTarget.style.background = C.surface
-  }, /*#__PURE__*/React.createElement("span", {
-    style: {
-      fontSize: 11,
-      fontWeight: 700,
-      color: C.orange,
-      flexShrink: 0,
-      padding: "2px 8px",
-      borderRadius: 4,
-      background: C.orangeDim
+  }, "💬 시점별 피드백"), comments.map(c => {
+    if (editingId === c.id) {
+      return /*#__PURE__*/React.createElement("div", {
+        key: c.id,
+        style: {
+          padding: "10px",
+          borderRadius: 8,
+          background: C.surface,
+          border: "1px solid " + C.accent
+        }
+      }, /*#__PURE__*/React.createElement("div", {
+        style: {
+          fontSize: 11,
+          fontWeight: 700,
+          color: C.orange,
+          marginBottom: 6
+        }
+      }, ft(c.time), " 시점 수정"), /*#__PURE__*/React.createElement("textarea", {
+        value: editVal,
+        rows: 3,
+        onChange: e => {
+          setEditVal(e.target.value);
+          editRef.current = e.target.value;
+        },
+        autoFocus: true,
+        style: {
+          width: "100%",
+          boxSizing: "border-box",
+          background: C.bg,
+          border: "1px solid " + C.border,
+          borderRadius: 8,
+          padding: "8px 10px",
+          color: C.text,
+          fontSize: 13,
+          fontFamily: "inherit",
+          outline: "none",
+          resize: "vertical",
+          minHeight: 60,
+          marginBottom: 8,
+          lineHeight: 1.6
+        }
+      }), /*#__PURE__*/React.createElement("div", {
+        style: {
+          display: "flex",
+          gap: 6,
+          justifyContent: "flex-end"
+        }
+      }, /*#__PURE__*/React.createElement(Btn, {
+        onClick: () => setEditingId(null),
+        variant: "secondary",
+        size: "sm"
+      }, "취소"), /*#__PURE__*/React.createElement(Btn, {
+        onClick: () => saveEdit(c.id),
+        disabled: !editVal.trim() || saving,
+        size: "sm"
+      }, saving ? "저장 중..." : "저장")));
     }
-  }, ft(c.time)), /*#__PURE__*/React.createElement("span", {
-    style: {
-      flex: 1,
-      fontSize: 13,
-      color: C.text,
-      lineHeight: 1.5
-    }
-  }, c.text), isTeacher && onUpdateComments && /*#__PURE__*/React.createElement("button", {
-    onClick: e => {
-      e.stopPropagation();
-      delComment(c.id);
-    },
-    style: {
-      background: "none",
-      border: "none",
-      color: C.red,
-      cursor: "pointer",
-      fontSize: 12,
-      padding: "0 4px",
-      flexShrink: 0
-    }
-  }, "✕")))), comments.length === 0 && !isTeacher && /*#__PURE__*/React.createElement("div", {
+    return /*#__PURE__*/React.createElement("div", {
+      key: c.id,
+      onClick: () => seekTo(c.time),
+      style: {
+        display: "flex",
+        alignItems: "flex-start",
+        gap: 8,
+        padding: "8px 10px",
+        borderRadius: 8,
+        background: C.surface,
+        cursor: "pointer",
+        border: "1px solid " + C.border
+      },
+      onMouseEnter: e => e.currentTarget.style.background = C.card,
+      onMouseLeave: e => e.currentTarget.style.background = C.surface
+    }, /*#__PURE__*/React.createElement("span", {
+      style: {
+        fontSize: 11,
+        fontWeight: 700,
+        color: C.orange,
+        flexShrink: 0,
+        padding: "2px 8px",
+        borderRadius: 4,
+        background: C.orangeDim
+      }
+    }, ft(c.time)), /*#__PURE__*/React.createElement("span", {
+      style: {
+        flex: 1,
+        fontSize: 13,
+        color: C.text,
+        lineHeight: 1.5,
+        whiteSpace: "pre-line"
+      }
+    }, c.text), isTeacher && onUpdateComments && /*#__PURE__*/React.createElement("div", {
+      style: {
+        display: "flex",
+        gap: 4,
+        flexShrink: 0
+      },
+      onClick: e => e.stopPropagation()
+    }, /*#__PURE__*/React.createElement("button", {
+      onClick: () => startEdit(c),
+      style: {
+        background: "none",
+        border: "none",
+        color: C.text3,
+        cursor: "pointer",
+        fontSize: 12,
+        padding: "0 4px"
+      }
+    }, "✏️"), /*#__PURE__*/React.createElement("button", {
+      onClick: () => delComment(c.id),
+      style: {
+        background: "none",
+        border: "none",
+        color: C.red,
+        cursor: "pointer",
+        fontSize: 12,
+        padding: "0 4px"
+      }
+    }, "✕")));
+  })), comments.length === 0 && !isTeacher && /*#__PURE__*/React.createElement("div", {
     style: {
       fontSize: 12,
       color: C.text4,
