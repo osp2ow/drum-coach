@@ -2388,18 +2388,44 @@ const CommentForm = memo(({
   saving,
   placeholder = "댓글 입력..."
 }) => {
+  const [val, setVal] = useState(initial || "");
   const ref = useRef(initial || "");
-  return /*#__PURE__*/React.createElement("div", {
+  return /*#__PURE__*/React.createElement("div", null, /*#__PURE__*/React.createElement("textarea", {
+    value: val,
+    rows: 3,
+    onChange: e => {
+      setVal(e.target.value);
+      ref.current = e.target.value;
+    },
+    placeholder: placeholder,
+    onKeyDown: e => {
+      if (e.key === "Enter" && (e.metaKey || e.ctrlKey) && ref.current.trim()) onSave(ref.current.trim());
+    },
+    style: {
+      width: "100%",
+      boxSizing: "border-box",
+      background: C.bg,
+      border: `1.5px solid ${C.border}`,
+      borderRadius: 10,
+      padding: "11px 13px",
+      color: C.text,
+      fontSize: 15,
+      fontFamily: "inherit",
+      outline: "none",
+      resize: "vertical",
+      minHeight: 70,
+      marginBottom: 8,
+      lineHeight: 1.6
+    },
+    onFocus: e => e.target.style.borderColor = C.accent,
+    onBlur: e => e.target.style.borderColor = C.border
+  }), /*#__PURE__*/React.createElement("div", {
     style: {
       display: "flex",
       gap: 8,
-      alignItems: "flex-end"
+      justifyContent: "flex-end"
     }
-  }, /*#__PURE__*/React.createElement(Field, {
-    initialValue: initial || "",
-    onCommit: v => ref.current = v,
-    placeholder: placeholder
-  }), onCancel && /*#__PURE__*/React.createElement(Btn, {
+  }, onCancel && /*#__PURE__*/React.createElement(Btn, {
     onClick: onCancel,
     variant: "secondary",
     size: "sm"
@@ -2407,7 +2433,7 @@ const CommentForm = memo(({
     onClick: () => ref.current.trim() && onSave(ref.current.trim()),
     disabled: saving,
     size: "sm"
-  }, saving ? "..." : "전송"));
+  }, saving ? "전송 중..." : "전송")));
 });
 
 /* ── FIX 2: 실제 갤러리 연동 영상 업로드 폼 ──────────────── */
