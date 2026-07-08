@@ -2390,6 +2390,16 @@ const CommentForm = memo(({
 }) => {
   const [val, setVal] = useState(initial || "");
   const ref = useRef(initial || "");
+  const handleSend = async () => {
+    if (!ref.current.trim()) return;
+    const text = ref.current.trim();
+    await onSave(text);
+    // 새 댓글 작성(수정이 아닐 때만) 전송 성공 후 입력창 비우기
+    if (!initial) {
+      setVal("");
+      ref.current = "";
+    }
+  };
   return /*#__PURE__*/React.createElement("div", null, /*#__PURE__*/React.createElement("textarea", {
     value: val,
     rows: 3,
@@ -2399,7 +2409,7 @@ const CommentForm = memo(({
     },
     placeholder: placeholder,
     onKeyDown: e => {
-      if (e.key === "Enter" && (e.metaKey || e.ctrlKey) && ref.current.trim()) onSave(ref.current.trim());
+      if (e.key === "Enter" && (e.metaKey || e.ctrlKey)) handleSend();
     },
     style: {
       width: "100%",
@@ -2430,8 +2440,8 @@ const CommentForm = memo(({
     variant: "secondary",
     size: "sm"
   }, "취소"), /*#__PURE__*/React.createElement(Btn, {
-    onClick: () => ref.current.trim() && onSave(ref.current.trim()),
-    disabled: saving,
+    onClick: handleSend,
+    disabled: saving || !val.trim(),
     size: "sm"
   }, saving ? "전송 중..." : "전송")));
 });
@@ -4035,61 +4045,6 @@ function ReviewScreen({
     }
   }, /*#__PURE__*/React.createElement(Card, {
     style: {
-      padding: 16,
-      background: C.accentDim2,
-      border: `1px solid ${C.accentDim}`
-    }
-  }, /*#__PURE__*/React.createElement("div", {
-    style: {
-      fontSize: 15,
-      fontWeight: 800,
-      color: C.text,
-      marginBottom: 8
-    }
-  }, assignment.title), /*#__PURE__*/React.createElement("div", {
-    style: {
-      fontSize: 11,
-      fontWeight: 700,
-      color: C.accent,
-      marginBottom: 6,
-      letterSpacing: 0.3
-    }
-  }, "📋 숙제 내용"), /*#__PURE__*/React.createElement("div", {
-    style: {
-      fontSize: 14,
-      color: assignment.detail ? C.text : C.text4,
-      lineHeight: 1.7,
-      whiteSpace: "pre-line",
-      marginBottom: 10,
-      padding: "10px 12px",
-      background: C.surface,
-      borderRadius: 8,
-      fontStyle: assignment.detail ? "normal" : "italic"
-    }
-  }, assignment.detail || "등록된 숙제 설명이 없습니다."), /*#__PURE__*/React.createElement("div", {
-    style: {
-      display: "flex",
-      gap: 16,
-      flexWrap: "wrap"
-    }
-  }, assignment.targetBpm && /*#__PURE__*/React.createElement("span", {
-    style: {
-      fontSize: 12,
-      color: C.accent,
-      fontWeight: 600
-    }
-  }, "🎵 목표 ", assignment.targetBpm, " BPM"), assignment.targetDurationMinutes && /*#__PURE__*/React.createElement("span", {
-    style: {
-      fontSize: 12,
-      color: C.text3
-    }
-  }, "⏱ 목표 ", assignment.targetDurationMinutes, "분"), /*#__PURE__*/React.createElement("span", {
-    style: {
-      fontSize: 12,
-      color: C.text4
-    }
-  }, "📅 ", fmtDate(assignment.createdAt), " 발행"))), /*#__PURE__*/React.createElement(Card, {
-    style: {
       padding: 0,
       overflow: "hidden"
     }
@@ -4333,7 +4288,55 @@ function ReviewScreen({
       color: C.text3,
       marginTop: 4
     }
-  }, fmtDate(l.createdAt)))))))), confirm?.commentId && /*#__PURE__*/React.createElement(ConfirmDialog, {
+  }, fmtDate(l.createdAt))))), /*#__PURE__*/React.createElement(Card, {
+    style: {
+      padding: 16,
+      background: C.accentDim2,
+      border: `1px solid ${C.accentDim}`
+    }
+  }, /*#__PURE__*/React.createElement("div", {
+    style: {
+      fontSize: 11,
+      fontWeight: 700,
+      color: C.accent,
+      marginBottom: 6,
+      letterSpacing: 0.3
+    }
+  }, "📋 숙제 내용"), /*#__PURE__*/React.createElement("div", {
+    style: {
+      fontSize: 13,
+      color: assignment.detail ? C.text : C.text4,
+      lineHeight: 1.7,
+      whiteSpace: "pre-line",
+      marginBottom: 10,
+      padding: "10px 12px",
+      background: C.surface,
+      borderRadius: 8,
+      fontStyle: assignment.detail ? "normal" : "italic"
+    }
+  }, assignment.detail || "등록된 숙제 설명이 없습니다."), /*#__PURE__*/React.createElement("div", {
+    style: {
+      display: "flex",
+      gap: 10,
+      flexWrap: "wrap"
+    }
+  }, assignment.targetBpm && /*#__PURE__*/React.createElement("span", {
+    style: {
+      fontSize: 11,
+      color: C.accent,
+      fontWeight: 600
+    }
+  }, "🎵 목표 ", assignment.targetBpm, " BPM"), assignment.targetDurationMinutes && /*#__PURE__*/React.createElement("span", {
+    style: {
+      fontSize: 11,
+      color: C.text3
+    }
+  }, "⏱ 목표 ", assignment.targetDurationMinutes, "분"), /*#__PURE__*/React.createElement("span", {
+    style: {
+      fontSize: 11,
+      color: C.text4
+    }
+  }, "📅 ", fmtDate(assignment.createdAt), " 발행")))))), confirm?.commentId && /*#__PURE__*/React.createElement(ConfirmDialog, {
     message: "댓글을 삭제할까요?",
     onConfirm: () => deleteComment(confirm.commentId),
     onCancel: () => setConfirm(null)
@@ -4794,7 +4797,11 @@ function AssignmentDetail({
     let videoUrl = null;
     try {
       const storageRef = firebase.storage().ref("videos/" + user.id + "/" + assignmentId + "/" + subId);
-      const task = storageRef.put(file);
+      // Content-Type을 명시적으로 지정 (일부 브라우저/기기에서 자동 인식 실패 시 영상이 오디오로만 재생되는 문제 방지)
+      const contentType = file.type && file.type.startsWith("video/") ? file.type : "video/mp4";
+      const task = storageRef.put(file, {
+        contentType
+      });
       await new Promise((resolve, reject) => {
         // 3분 동안 진행이 전혀 없으면 타임아웃 처리 (무한 대기 방지)
         let lastBytes = -1,
@@ -7105,6 +7112,7 @@ const VideoTimestampPlayer = memo(({
   const [editingId, setEditingId] = useState(null); // 편집 중인 댓글 id
   const [editVal, setEditVal] = useState(""); // 편집 중인 텍스트
   const editRef = useRef("");
+  const [videoError, setVideoError] = useState(false);
   const comments = (submission && submission.timelineComments || []).slice().sort((a, b) => a.time - b.time);
   const ft = s => {
     const m = Math.floor(s / 60);
@@ -7201,8 +7209,16 @@ const VideoTimestampPlayer = memo(({
     controls: true,
     playsInline: true,
     preload: "auto",
-    onLoadedMetadata: () => setDuration(videoRef.current ? videoRef.current.duration : 0),
-    onTimeUpdate: () => setCurTime(videoRef.current ? videoRef.current.currentTime : 0),
+    onLoadedMetadata: () => {
+      setDuration(videoRef.current ? videoRef.current.duration : 0);
+      // videoWidth가 0이면 비디오 트랙이 없거나 코덱 디코딩 실패 (오디오만 재생되는 경우)
+      if (videoRef.current && videoRef.current.videoWidth === 0) setVideoError(true);
+    },
+    onTimeUpdate: () => {
+      setCurTime(videoRef.current ? videoRef.current.currentTime : 0);
+      if (videoRef.current && videoRef.current.videoWidth === 0 && !videoError) setVideoError(true);
+    },
+    onError: () => setVideoError(true),
     style: {
       width: "100%",
       height: "auto",
@@ -7211,7 +7227,15 @@ const VideoTimestampPlayer = memo(({
       display: "block",
       borderRadius: "8px 8px 0 0"
     }
-  }), duration > 0 && /*#__PURE__*/React.createElement("div", {
+  }), videoError && /*#__PURE__*/React.createElement("div", {
+    style: {
+      background: C.orangeDim,
+      padding: "10px 14px",
+      fontSize: 12,
+      color: C.orange,
+      lineHeight: 1.6
+    }
+  }, "⚠️ 소리만 재생되고 화면이 안 보이나요? 아이폰에서 촬영된 영상(HEVC 코덱)은 일부 브라우저에서 화면 없이 소리만 나올 수 있어요. 학생에게 \"카메라 형식\"을 \"높은 호환성\"으로 바꿔서 다시 촬영/업로드해달라고 요청하시면 해결됩니다."), duration > 0 && /*#__PURE__*/React.createElement("div", {
     style: {
       background: C.surface,
       borderRadius: "0 0 8px 8px",
@@ -7280,20 +7304,24 @@ const VideoTimestampPlayer = memo(({
       fontWeight: 700,
       marginBottom: 6
     }
-  }, "📍 ", ft(curTime), " 시점"), /*#__PURE__*/React.createElement("textarea", {
+  }, "📍 ", ft(curTime), " 시점"), /*#__PURE__*/React.createElement("div", {
+    style: {
+      display: "flex",
+      gap: 8
+    }
+  }, /*#__PURE__*/React.createElement("input", {
     value: commentVal,
     onChange: e => {
       setCommentVal(e.target.value);
       commentRef.current = e.target.value;
     },
-    placeholder: "이 시점에 대한 피드백을 자세히 입력하세요...",
+    placeholder: "이 시점에 대한 피드백을 입력하세요...",
     autoFocus: true,
-    rows: 3,
     onKeyDown: e => {
-      if (e.key === "Enter" && (e.metaKey || e.ctrlKey)) addComment();
+      if (e.key === "Enter") addComment();
     },
     style: {
-      width: "100%",
+      flex: 1,
       boxSizing: "border-box",
       background: C.bg,
       border: "1px solid " + C.accent,
@@ -7302,23 +7330,17 @@ const VideoTimestampPlayer = memo(({
       color: C.text,
       fontSize: 14,
       fontFamily: "inherit",
-      outline: "none",
-      resize: "vertical",
-      minHeight: 70,
-      marginBottom: 8,
-      lineHeight: 1.6
+      outline: "none"
     }
-  }), /*#__PURE__*/React.createElement("div", {
-    style: {
-      fontSize: 10,
-      color: C.text4,
-      marginBottom: 8
-    }
-  }, "⌘/Ctrl + Enter로 빠르게 추가"), /*#__PURE__*/React.createElement("div", {
+  }), /*#__PURE__*/React.createElement(Btn, {
+    onClick: addComment,
+    disabled: !commentVal.trim() || saving,
+    size: "sm"
+  }, saving ? "저장 중..." : "추가")), /*#__PURE__*/React.createElement("div", {
     style: {
       display: "flex",
-      gap: 8,
-      justifyContent: "flex-end"
+      justifyContent: "flex-end",
+      marginTop: 8
     }
   }, /*#__PURE__*/React.createElement(Btn, {
     onClick: () => {
@@ -7328,11 +7350,7 @@ const VideoTimestampPlayer = memo(({
     },
     variant: "secondary",
     size: "sm"
-  }, "취소"), /*#__PURE__*/React.createElement(Btn, {
-    onClick: addComment,
-    disabled: !commentVal.trim() || saving,
-    size: "sm"
-  }, saving ? "저장 중..." : "추가")))), comments.length > 0 && /*#__PURE__*/React.createElement("div", {
+  }, "취소")))), comments.length > 0 && /*#__PURE__*/React.createElement("div", {
     style: {
       marginTop: 10,
       display: "flex",
@@ -7363,16 +7381,24 @@ const VideoTimestampPlayer = memo(({
           color: C.orange,
           marginBottom: 6
         }
-      }, ft(c.time), " 시점 수정"), /*#__PURE__*/React.createElement("textarea", {
+      }, ft(c.time), " 시점 수정"), /*#__PURE__*/React.createElement("div", {
+        style: {
+          display: "flex",
+          gap: 6,
+          marginBottom: 8
+        }
+      }, /*#__PURE__*/React.createElement("input", {
         value: editVal,
-        rows: 3,
         onChange: e => {
           setEditVal(e.target.value);
           editRef.current = e.target.value;
         },
         autoFocus: true,
+        onKeyDown: e => {
+          if (e.key === "Enter" && editVal.trim()) saveEdit(c.id);
+        },
         style: {
-          width: "100%",
+          flex: 1,
           boxSizing: "border-box",
           background: C.bg,
           border: "1px solid " + C.border,
@@ -7381,13 +7407,9 @@ const VideoTimestampPlayer = memo(({
           color: C.text,
           fontSize: 13,
           fontFamily: "inherit",
-          outline: "none",
-          resize: "vertical",
-          minHeight: 60,
-          marginBottom: 8,
-          lineHeight: 1.6
+          outline: "none"
         }
-      }), /*#__PURE__*/React.createElement("div", {
+      })), /*#__PURE__*/React.createElement("div", {
         style: {
           display: "flex",
           gap: 6,
