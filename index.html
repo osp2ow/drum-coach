@@ -1387,6 +1387,51 @@ async function saveRoutineData(userId, data) {
   await fs.collection("dc_routines").doc(userId).set(data);
 }
 
+/* ── 학생 피드백 읽음 표시 (숙제별 마지막으로 읽은 시각) ──── */
+async function loadReadMarks(studentId) {
+  const fs = typeof _fsdb !== "undefined" ? _fsdb : null;
+  if (!fs) return {};
+  try {
+    const d = await fs.collection("dc_read_marks").doc(studentId).get();
+    return d.data() || {};
+  } catch {
+    return {};
+  }
+}
+async function markAssignmentRead(studentId, assignmentId) {
+  const fs = typeof _fsdb !== "undefined" ? _fsdb : null;
+  if (!fs) return;
+  try {
+    await fs.collection("dc_read_marks").doc(studentId).set({
+      [assignmentId]: Date.now()
+    }, {
+      merge: true
+    });
+  } catch (e) {
+    console.error("읽음 표시 실패:", e);
+  }
+}
+
+// 특정 숙제에 선생님이 남긴 가장 최근 피드백 시각 계산 (일반 댓글 + 영상 시점 피드백 모두 포함)
+function getLatestTeacherFeedbackTime(db, assignmentId) {
+  const subs = db.submissions.filter(s => s.assignmentId === assignmentId);
+  const subIds = subs.map(s => s.id);
+  let latest = 0;
+  db.comments.forEach(c => {
+    if (c.authorRole === "teacher" && subIds.includes(c.submissionId)) {
+      const t = new Date(c.createdAt).getTime();
+      if (t > latest) latest = t;
+    }
+  });
+  subs.forEach(s => {
+    (s.timelineComments || []).forEach(tc => {
+      const t = new Date(tc.createdAt).getTime();
+      if (t > latest) latest = t;
+    });
+  });
+  return latest;
+}
+
 // 연속 연습일 계산
 function calcStreak(sessions, userId) {
   const days = new Set(sessions.filter(s => s.studentId === userId).map(s => s.startedAt.slice(0, 10)));
@@ -4025,10 +4070,17 @@ function ReviewScreen({
       ...a,
       status
     } : a);
-    save("assignments", na);
+    // 제출물 상태도 함께 동기화 (검토 대기 목록 등에서 정확히 걸러지도록)
+    const ns = db.submissions.map(s => s.assignmentId === assignmentId ? {
+      ...s,
+      status
+    } : s);
+    await save("assignments", na);
+    await save("submissions", ns);
     setDB(d => ({
       ...d,
-      assignments: na
+      assignments: na,
+      submissions: ns
     }));
   };
   return /*#__PURE__*/React.createElement("div", {
@@ -4390,6 +4442,17 @@ function StudentDashboard({
   const totalMin = Math.floor(ses.reduce((a, s) => a + s.durationSeconds, 0) / 60);
   const myLink = db.links.find(l => l.studentId === user.id && l.status === "active");
   const myTeacher = myLink ? db.users.find(u => u.id === myLink.teacherId) : null;
+
+  // 선생님 피드백 읽음 여부 확인
+  const [readMarks, setReadMarks] = useState(null);
+  useEffect(() => {
+    loadReadMarks(user.id).then(setReadMarks);
+  }, []);
+  const unreadAssignments = readMarks === null ? [] : myA.filter(a => {
+    const latest = getLatestTeacherFeedbackTime(db, a.id);
+    if (latest === 0) return false;
+    return latest > (readMarks[a.id] || 0);
+  });
   return /*#__PURE__*/React.createElement("div", {
     style: {
       flex: 1,
@@ -4433,7 +4496,54 @@ function StudentDashboard({
       fontWeight: 700,
       color: streak > 0 ? C.orange : C.text3
     }
-  }, streak > 0 ? `${streak}일 연속 연습 중!${!practicedToday ? " (어제까지)" : ""}` : "오늘 연습을 시작해보세요!"))), /*#__PURE__*/React.createElement("div", {
+  }, streak > 0 ? `${streak}일 연속 연습 중!${!practicedToday ? " (어제까지)" : ""}` : "오늘 연습을 시작해보세요!"))), unreadAssignments.length > 0 && /*#__PURE__*/React.createElement("div", {
+    onClick: () => {
+      // 피드백이 하나뿐이면 바로 해당 숙제로, 여러 개면 숙제 목록으로
+      if (unreadAssignments.length === 1) setView({
+        screen: "assignmentDetail",
+        assignmentId: unreadAssignments[0].id
+      });else setView({
+        screen: "assignments",
+        filter: "all"
+      });
+    },
+    style: {
+      display: "flex",
+      alignItems: "center",
+      gap: 10,
+      padding: "12px 16px",
+      borderRadius: 14,
+      background: C.blueDim,
+      border: `1px solid ${C.blue}`,
+      marginBottom: 14,
+      cursor: "pointer"
+    }
+  }, /*#__PURE__*/React.createElement("span", {
+    style: {
+      fontSize: 22
+    }
+  }, "🔔"), /*#__PURE__*/React.createElement("div", {
+    style: {
+      flex: 1
+    }
+  }, /*#__PURE__*/React.createElement("div", {
+    style: {
+      fontSize: 14,
+      fontWeight: 800,
+      color: C.blue
+    }
+  }, "선생님이 피드백을 남겼어요!"), /*#__PURE__*/React.createElement("div", {
+    style: {
+      fontSize: 12,
+      color: C.text3,
+      marginTop: 1
+    }
+  }, unreadAssignments.length === 1 ? `"${unreadAssignments[0].title}" 숙제 확인하기` : `${unreadAssignments.length}개 숙제에 새 피드백이 있어요`)), /*#__PURE__*/React.createElement("span", {
+    style: {
+      fontSize: 16,
+      color: C.blue
+    }
+  }, "›")), /*#__PURE__*/React.createElement("div", {
     style: {
       display: "grid",
       gridTemplateColumns: "1fr 1fr",
@@ -4582,6 +4692,15 @@ function StudentAssignments({
   const [filter, setFilter] = useState(initFilter || "all");
   const myA = db.assignments.filter(a => a.studentId === user.id).sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
   const filtered = filter === "all" ? myA : filter === "inProgress" ? myA.filter(a => ["assigned", "submitted", "rejected"].includes(a.status)) : myA.filter(a => a.status === "approved");
+  const [readMarks, setReadMarks] = useState(null);
+  useEffect(() => {
+    loadReadMarks(user.id).then(setReadMarks);
+  }, []);
+  const hasUnread = assignmentId => {
+    if (readMarks === null) return false;
+    const latest = getLatestTeacherFeedbackTime(db, assignmentId);
+    return latest > 0 && latest > (readMarks[assignmentId] || 0);
+  };
   return /*#__PURE__*/React.createElement("div", {
     style: {
       flex: 1,
@@ -4659,18 +4778,35 @@ function StudentAssignments({
       style: {
         display: "flex",
         justifyContent: "space-between",
-        marginBottom: 6
+        marginBottom: 6,
+        alignItems: "flex-start"
+      }
+    }, /*#__PURE__*/React.createElement("div", {
+      style: {
+        display: "flex",
+        alignItems: "center",
+        gap: 6,
+        flex: 1,
+        marginRight: 10
       }
     }, /*#__PURE__*/React.createElement("h3", {
       style: {
         margin: 0,
         fontSize: 15,
         fontWeight: 700,
-        color: C.text,
-        flex: 1,
-        marginRight: 10
+        color: C.text
       }
-    }, a.title), /*#__PURE__*/React.createElement(Badge, {
+    }, a.title), hasUnread(a.id) && /*#__PURE__*/React.createElement("span", {
+      style: {
+        fontSize: 10,
+        fontWeight: 800,
+        color: "#fff",
+        background: C.blue,
+        borderRadius: 20,
+        padding: "2px 8px",
+        whiteSpace: "nowrap"
+      }
+    }, "🔔 새 피드백")), /*#__PURE__*/React.createElement(Badge, {
       status: a.status
     })), /*#__PURE__*/React.createElement("div", {
       style: {
@@ -4714,6 +4850,11 @@ function AssignmentDetail({
   const [activeModal, setActiveModal] = useState(null); // 'timer'|'log'|'upload'|{type:'editLog',log}|{type:'editComment',c}
   const [confirm, setConfirm] = useState(null);
   const [saving, setSaving] = useState(false);
+
+  // 이 숙제 화면에 들어오면 선생님 피드백을 읽은 것으로 표시
+  useEffect(() => {
+    if (assignmentId) markAssignmentRead(user.id, assignmentId);
+  }, [assignmentId]);
   if (!assignment) return null;
   const sessions = db.sessions.filter(s => s.assignmentId === assignmentId);
   const logs = db.logs.filter(l => l.assignmentId === assignmentId);
@@ -5520,7 +5661,7 @@ function TeacherPendingScreen({
   isMobile
 }) {
   const myA = db.assignments.filter(a => a.teacherId === user.id);
-  const pending = db.submissions.filter(s => s.status === "pending" && myA.some(a => a.id === s.assignmentId)).sort((a, b) => new Date(b.uploadedAt) - new Date(a.uploadedAt));
+  const pending = db.submissions.filter(s => s.status === "pending" && myA.some(a => a.id === s.assignmentId && a.status !== "approved")).sort((a, b) => new Date(b.uploadedAt) - new Date(a.uploadedAt));
   return /*#__PURE__*/React.createElement("div", {
     style: {
       flex: 1,
