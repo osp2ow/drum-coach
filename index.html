@@ -1429,6 +1429,12 @@ function getLatestTeacherFeedbackTime(db, assignmentId) {
       if (t > latest) latest = t;
     });
   });
+  // 재제출 요청도 알림 대상 (별도 댓글 없이 상태만 바꿔도 학생이 확인할 수 있게)
+  const a = db.assignments.find(x => x.id === assignmentId);
+  if (a && a.status === "rejected" && a.rejectedAt) {
+    const t = new Date(a.rejectedAt).getTime();
+    if (t > latest) latest = t;
+  }
   return latest;
 }
 
@@ -4163,9 +4169,14 @@ function ReviewScreen({
     setConfirm(null);
   };
   const updateStatus = async status => {
+    // 재제출 요청은 별도 피드백 댓글이 없어도 학생에게 알림이 가도록 시각 기록
+    const extra = status === "rejected" ? {
+      rejectedAt: now()
+    } : {};
     const na = db.assignments.map(a => a.id === assignmentId ? {
       ...a,
-      status
+      status,
+      ...extra
     } : a);
     // 제출물 상태도 함께 동기화 (검토 대기 목록 등에서 정확히 걸러지도록)
     const ns = db.submissions.map(s => s.assignmentId === assignmentId ? {
