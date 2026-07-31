@@ -3225,7 +3225,8 @@ function TeacherDashboard({
       onClick: () => setView({
         screen: "review",
         assignmentId: a?.id,
-        studentId: s?.id
+        studentId: s?.id,
+        from: "dashboard"
       }),
       style: {
         display: "flex",
@@ -3299,6 +3300,8 @@ function TeacherDashboard({
     }
   }, "학생을 초대해보세요") : myStudents.map(s => {
     const a = myA.filter(x => x.studentId === s.id);
+    const inProgCount = a.filter(x => x.status !== "approved").length;
+    const doneCount = a.filter(x => x.status === "approved").length;
     const p = db.submissions.filter(sub => a.some(x => x.id === sub.assignmentId && x.status !== "approved") && sub.status === "pending").length;
     return /*#__PURE__*/React.createElement("div", {
       key: s.id,
@@ -3334,7 +3337,15 @@ function TeacherDashboard({
         fontSize: 12,
         color: C.text3
       }
-    }, "숙제 ", a.length, "개", p > 0 && /*#__PURE__*/React.createElement("span", {
+    }, /*#__PURE__*/React.createElement("span", {
+      style: {
+        color: C.orange
+      }
+    }, "진행중 ", inProgCount, "개"), " · ", /*#__PURE__*/React.createElement("span", {
+      style: {
+        color: C.green
+      }
+    }, "완료 ", doneCount, "개"), p > 0 && /*#__PURE__*/React.createElement("span", {
       style: {
         color: C.accent
       }
@@ -3732,7 +3743,7 @@ function TeacherStudents({
         borderTop: `1px solid ${C.border}`,
         paddingTop: 12
       }
-    }, [["숙제", a.length + "개"], ["완료", a.filter(x => x.status === "approved").length + "개"], ["연습", tm + "분"]].map(([k, v]) => /*#__PURE__*/React.createElement("div", {
+    }, [["진행중", a.filter(x => x.status !== "approved").length + "개"], ["완료", a.filter(x => x.status === "approved").length + "개"], ["연습", tm + "분"]].map(([k, v]) => /*#__PURE__*/React.createElement("div", {
       key: k,
       style: {
         textAlign: "center"
@@ -4107,7 +4118,8 @@ function ReviewScreen({
   setView,
   assignmentId,
   studentId,
-  isMobile
+  isMobile,
+  from
 }) {
   const assignment = db.assignments.find(a => a.id === assignmentId);
   const student = db.users.find(u => u.id === studentId);
@@ -4200,11 +4212,19 @@ function ReviewScreen({
     }
   }, /*#__PURE__*/React.createElement(PageHeader, {
     title: `${student.name} · ${assignment.title}`,
-    onBack: () => setView({
-      screen: "studentDetail",
-      studentId
-    }),
-    backLabel: student.name,
+    onBack: () => {
+      if (from === "pending") setView({
+        screen: "teacherPending"
+      });else if (from === "dashboard") setView({
+        screen: "dashboard"
+      });else if (from === "allAssignments") setView({
+        screen: "teacherAllAssignments"
+      });else setView({
+        screen: "studentDetail",
+        studentId
+      });
+    },
+    backLabel: from === "pending" ? "검토 대기" : from === "dashboard" ? "대시보드" : from === "allAssignments" ? "전체 숙제" : student.name,
     isMobile: isMobile
   }), /*#__PURE__*/React.createElement("div", {
     style: {
@@ -5742,7 +5762,8 @@ function TeacherAllAssignmentsInner({
       onClick: () => setView({
         screen: "review",
         assignmentId: a.id,
-        studentId: a.studentId
+        studentId: a.studentId,
+        from: "allAssignments"
       })
     }, /*#__PURE__*/React.createElement("div", {
       style: {
@@ -5929,7 +5950,8 @@ function TeacherPendingScreen({
       onClick: () => setView({
         screen: "review",
         assignmentId: a?.id,
-        studentId: student?.id
+        studentId: student?.id,
+        from: "pending"
       }),
       fullWidth: true,
       variant: "secondary"
@@ -11197,7 +11219,8 @@ function App() {
         setView: setView,
         assignmentId: view.assignmentId,
         studentId: view.studentId,
-        isMobile: isMobile
+        isMobile: isMobile,
+        from: view.from
       });
       if (s === "teacherAllAssignments") return /*#__PURE__*/React.createElement(TeacherAllAssignmentsInner, {
         db: db,
