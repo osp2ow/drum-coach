@@ -1412,6 +1412,45 @@ async function markAssignmentRead(studentId, assignmentId) {
   }
 }
 
+/* ── 속도조절용 저장된 음원 라이브러리 (사용자별 Firestore + Storage) ── */
+async function loadAudioTracks(userId) {
+  const fs = typeof _fsdb !== "undefined" ? _fsdb : null;
+  if (!fs) return [];
+  try {
+    const snap = await fs.collection("dc_audio_tracks").where("userId", "==", userId).get();
+    const tracks = [];
+    snap.forEach(doc => tracks.push({
+      id: doc.id,
+      ...doc.data()
+    }));
+    return tracks.sort((a, b) => new Date(b.uploadedAt) - new Date(a.uploadedAt));
+  } catch (e) {
+    console.error("음원 목록 로드 실패:", e);
+    return [];
+  }
+}
+async function saveAudioTrackMeta(track) {
+  const fs = typeof _fsdb !== "undefined" ? _fsdb : null;
+  if (!fs) return;
+  await fs.collection("dc_audio_tracks").doc(track.id).set(track);
+}
+async function deleteAudioTrack(track) {
+  const fs = typeof _fsdb !== "undefined" ? _fsdb : null;
+  if (!fs) return;
+  try {
+    await fs.collection("dc_audio_tracks").doc(track.id).delete();
+  } catch (e) {
+    console.error("음원 메타 삭제 실패:", e);
+  }
+  if (track.storagePath) {
+    try {
+      await firebase.storage().ref(track.storagePath).delete();
+    } catch (e) {
+      console.error("음원 파일 삭제 실패:", e);
+    }
+  }
+}
+
 // 특정 숙제에 선생님이 남긴 가장 최근 피드백 시각 계산 (일반 댓글 + 영상 시점 피드백 모두 포함)
 function getLatestTeacherFeedbackTime(db, assignmentId) {
   const subs = db.submissions.filter(s => s.assignmentId === assignmentId);
@@ -6536,18 +6575,24 @@ function GrowthScreen({
 /* ── 음원 속도조절 (mp3 재생속도 조절, 음정 유지) ─────────── */
 function AudioSpeedScreen({
   isMobile,
-  hideHeader
+  hideHeader,
+  user
 }) {
   const audioRef = useRef(null);
   const fileInputRef = useRef(null);
-  const [fileName, setFileName] = useState("");
-  const [fileUrl, setFileUrl] = useState(null);
+  const [tracks, setTracks] = useState(null); // 저장된 음원 목록 (null=로딩중)
+  const [current, setCurrent] = useState(null); // 현재 재생중인 트랙 {id,name,url}
+  const [uploading, setUploading] = useState(false);
+  const [uploadPct, setUploadPct] = useState(0);
   const [playing, setPlaying] = useState(false);
   const [speed, setSpeed] = useState(1.0);
   const [preservePitch, setPreservePitch] = useState(true);
   const [loop, setLoop] = useState(false);
   const [curTime, setCurTime] = useState(0);
   const [duration, setDuration] = useState(0);
+  useEffect(() => {
+    if (user?.id) loadAudioTracks(user.id).then(setTracks);else setTracks([]);
+  }, [user?.id]);
   const applyPitchSetting = (el, val) => {
     if (!el) return;
     el.preservesPitch = val;
@@ -6556,31 +6601,87 @@ function AudioSpeedScreen({
   };
   useEffect(() => {
     if (audioRef.current) applyPitchSetting(audioRef.current, preservePitch);
-  }, [preservePitch, fileUrl]);
+  }, [preservePitch, current]);
   useEffect(() => {
     if (audioRef.current) audioRef.current.playbackRate = speed;
-  }, [speed, fileUrl]);
-  useEffect(() => () => {
-    if (fileUrl) URL.revokeObjectURL(fileUrl);
-  }, [fileUrl]);
-  const handleFileChange = e => {
+  }, [speed, current]);
+  const handleFileChange = async e => {
     const file = e.target.files?.[0];
+    // iOS Safari 대응: 입력 초기화(같은 파일 재선택 허용) + 파일 없을 때 조용히 무시
+    e.target.value = "";
     if (!file) return;
-    if (fileUrl) URL.revokeObjectURL(fileUrl);
-    const url = URL.createObjectURL(file);
-    setFileUrl(url);
-    setFileName(file.name);
-    setPlaying(false);
-    setCurTime(0);
-    setDuration(0);
+    if (!user?.id) {
+      alert("로그인 정보를 확인할 수 없어요. 새로고침 후 다시 시도해주세요.");
+      return;
+    }
+    setUploading(true);
+    setUploadPct(0);
+    const trackId = uid();
+    const storagePath = "audio_tracks/" + user.id + "/" + trackId + "_" + file.name;
+    try {
+      const storageRef = firebase.storage().ref(storagePath);
+      const task = storageRef.put(file);
+      await new Promise((resolve, reject) => {
+        let lastBytes = -1,
+          stuckTimer = null;
+        const resetStuckTimer = () => {
+          if (stuckTimer) clearTimeout(stuckTimer);
+          stuckTimer = setTimeout(() => {
+            task.cancel();
+            reject(new Error("업로드가 너무 오래 걸려 취소되었습니다."));
+          }, 180000);
+        };
+        resetStuckTimer();
+        task.on("state_changed", snap => {
+          const pct = Math.round(snap.bytesTransferred / snap.totalBytes * 100);
+          setUploadPct(pct);
+          if (snap.bytesTransferred !== lastBytes) {
+            lastBytes = snap.bytesTransferred;
+            resetStuckTimer();
+          }
+        }, err => {
+          clearTimeout(stuckTimer);
+          reject(err);
+        }, () => {
+          clearTimeout(stuckTimer);
+          resolve();
+        });
+      });
+      const url = await storageRef.getDownloadURL();
+      const track = {
+        id: trackId,
+        userId: user.id,
+        name: file.name.replace(/\.[^.]+$/, ""),
+        url,
+        storagePath,
+        uploadedAt: now()
+      };
+      await saveAudioTrackMeta(track);
+      setTracks(t => [track, ...(t || [])]);
+      setCurrent(track);
+      setPlaying(false);
+      setCurTime(0);
+      setDuration(0);
+      setSpeed(1.0);
+    } catch (err) {
+      console.error("음원 업로드 실패:", err);
+      alert("음원 업로드에 실패했어요: " + (err.message || "알 수 없는 오류") + "\n다시 시도해주세요.");
+    } finally {
+      setUploading(false);
+    }
+  };
+  const handleDelete = async track => {
+    if (!window.confirm(`"${track.name}"을(를) 삭제할까요?`)) return;
+    setTracks(t => t.filter(x => x.id !== track.id));
+    if (current?.id === track.id) {
+      setCurrent(null);
+      setPlaying(false);
+    }
+    await deleteAudioTrack(track);
   };
   const togglePlay = () => {
     if (!audioRef.current) return;
-    if (playing) {
-      audioRef.current.pause();
-    } else {
-      audioRef.current.play().catch(() => {});
-    }
+    if (playing) audioRef.current.pause();else audioRef.current.play().catch(() => {});
   };
   const seek = ratio => {
     if (!audioRef.current || !duration) return;
@@ -6613,51 +6714,137 @@ function AudioSpeedScreen({
       alignItems: "center"
     }
   }, /*#__PURE__*/React.createElement("div", {
-    onClick: () => fileInputRef.current?.click(),
     style: {
       width: "100%",
-      maxWidth: 420,
-      padding: "20px",
+      maxWidth: 420
+    }
+  }, /*#__PURE__*/React.createElement("div", {
+    onClick: () => !uploading && fileInputRef.current?.click(),
+    style: {
+      padding: "18px",
       borderRadius: 16,
-      cursor: "pointer",
+      cursor: uploading ? "wait" : "pointer",
       background: C.card,
       border: `2px dashed ${C.border}`,
       textAlign: "center",
-      marginBottom: 20
+      marginBottom: 16
     }
-  }, /*#__PURE__*/React.createElement("div", {
+  }, uploading ? /*#__PURE__*/React.createElement(React.Fragment, null, /*#__PURE__*/React.createElement("div", {
     style: {
-      fontSize: 32,
-      marginBottom: 8
+      fontSize: 28,
+      marginBottom: 6,
+      animation: "dcspin 1s linear infinite"
     }
-  }, "🎵"), /*#__PURE__*/React.createElement("div", {
+  }, "⏳"), /*#__PURE__*/React.createElement("div", {
     style: {
-      fontSize: 14,
+      fontSize: 13,
       fontWeight: 700,
-      color: C.text,
-      marginBottom: 2
+      color: C.accent
     }
-  }, fileName || "mp3 파일 선택"), /*#__PURE__*/React.createElement("div", {
+  }, "업로드 중... ", uploadPct, "%")) : /*#__PURE__*/React.createElement(React.Fragment, null, /*#__PURE__*/React.createElement("div", {
+    style: {
+      fontSize: 28,
+      marginBottom: 6
+    }
+  }, "➕"), /*#__PURE__*/React.createElement("div", {
+    style: {
+      fontSize: 13,
+      fontWeight: 700,
+      color: C.text
+    }
+  }, "새 mp3 음원 추가"), /*#__PURE__*/React.createElement("div", {
     style: {
       fontSize: 11,
-      color: C.text3
+      color: C.text3,
+      marginTop: 2
     }
-  }, "탭하여 음원 불러오기")), /*#__PURE__*/React.createElement("input", {
+  }, "탭하여 파일 선택 (자동으로 저장됨)"))), /*#__PURE__*/React.createElement("input", {
     ref: fileInputRef,
     type: "file",
-    accept: "audio/*",
+    accept: "audio/*,.mp3,.m4a,.wav,.aac",
     style: {
       display: "none"
     },
     onChange: handleFileChange
-  }), fileUrl && /*#__PURE__*/React.createElement("div", {
+  }), tracks === null && /*#__PURE__*/React.createElement("div", {
+    style: {
+      textAlign: "center",
+      padding: "20px 0",
+      color: C.text3,
+      fontSize: 13
+    }
+  }, "불러오는 중..."), tracks && tracks.length > 0 && /*#__PURE__*/React.createElement("div", {
+    style: {
+      marginBottom: 20
+    }
+  }, /*#__PURE__*/React.createElement("div", {
+    style: {
+      fontSize: 12,
+      fontWeight: 700,
+      color: C.text3,
+      marginBottom: 8
+    }
+  }, "🎵 내 음원 목록 (", tracks.length, ")"), /*#__PURE__*/React.createElement("div", {
+    style: {
+      display: "flex",
+      flexDirection: "column",
+      gap: 6
+    }
+  }, tracks.map(t => /*#__PURE__*/React.createElement("div", {
+    key: t.id,
+    onClick: () => {
+      setCurrent(t);
+      setPlaying(false);
+      setCurTime(0);
+      setDuration(0);
+      setSpeed(1.0);
+    },
+    style: {
+      display: "flex",
+      alignItems: "center",
+      gap: 10,
+      padding: "10px 12px",
+      borderRadius: 10,
+      cursor: "pointer",
+      background: current?.id === t.id ? C.accentDim : C.surface,
+      border: `1px solid ${current?.id === t.id ? C.accent : C.border}`
+    }
+  }, /*#__PURE__*/React.createElement("span", {
+    style: {
+      fontSize: 16
+    }
+  }, current?.id === t.id && playing ? "🔊" : "🎵"), /*#__PURE__*/React.createElement("span", {
+    style: {
+      flex: 1,
+      fontSize: 13,
+      fontWeight: 600,
+      color: C.text,
+      overflow: "hidden",
+      textOverflow: "ellipsis",
+      whiteSpace: "nowrap"
+    }
+  }, t.name), /*#__PURE__*/React.createElement("button", {
+    onClick: e => {
+      e.stopPropagation();
+      handleDelete(t);
+    },
+    style: {
+      background: "none",
+      border: "none",
+      color: C.red,
+      cursor: "pointer",
+      fontSize: 13,
+      padding: "2px 6px",
+      flexShrink: 0
+    }
+  }, "🗑")))))), current && /*#__PURE__*/React.createElement("div", {
     style: {
       width: "100%",
       maxWidth: 420
     }
   }, /*#__PURE__*/React.createElement("audio", {
     ref: audioRef,
-    src: fileUrl,
+    src: current.url,
     loop: loop,
     onLoadedMetadata: () => {
       setDuration(audioRef.current?.duration || 0);
@@ -6672,6 +6859,14 @@ function AudioSpeedScreen({
       display: "none"
     }
   }), /*#__PURE__*/React.createElement("div", {
+    style: {
+      fontSize: 13,
+      fontWeight: 700,
+      color: C.text,
+      marginBottom: 12,
+      textAlign: "center"
+    }
+  }, "🎧 ", current.name), /*#__PURE__*/React.createElement("div", {
     style: {
       display: "flex",
       flexDirection: "column",
@@ -6876,9 +7071,10 @@ function AudioSpeedScreen({
 
 /* ── 연습 도구 (메트로놈 + 속도조절 서브탭) ────────────────── */
 function PracticeToolsScreen({
-  isMobile
+  isMobile,
+  user
 }) {
-  const [tab, setTab] = useState("metronome");
+  const [tab, setTab] = useState("speed");
   return /*#__PURE__*/React.createElement("div", {
     style: {
       flex: 1,
@@ -6888,7 +7084,7 @@ function PracticeToolsScreen({
     }
   }, /*#__PURE__*/React.createElement(PageHeader, {
     title: "연습 도구",
-    sub: "메트로놈 · 음원 속도조절",
+    sub: "음원 속도조절 · 메트로놈",
     isMobile: isMobile
   }), /*#__PURE__*/React.createElement("div", {
     style: {
@@ -6897,7 +7093,7 @@ function PracticeToolsScreen({
       flexShrink: 0,
       background: C.bg
     }
-  }, [["metronome", "🥁 메트로놈"], ["speed", "🎚️ 속도조절"]].map(([t, l]) => /*#__PURE__*/React.createElement("button", {
+  }, [["speed", "🎚️ 속도조절"], ["metronome", "🥁 메트로놈"]].map(([t, l]) => /*#__PURE__*/React.createElement("button", {
     key: t,
     onClick: () => setTab(t),
     style: {
@@ -6917,7 +7113,8 @@ function PracticeToolsScreen({
     hideHeader: true
   }) : /*#__PURE__*/React.createElement(AudioSpeedScreen, {
     isMobile: isMobile,
-    hideHeader: true
+    hideHeader: true,
+    user: user
   }));
 }
 
@@ -11633,7 +11830,8 @@ function App() {
         isMobile: isMobile
       });
       if (s === "metronome") return /*#__PURE__*/React.createElement(PracticeToolsScreen, {
-        isMobile: isMobile
+        isMobile: isMobile,
+        user: user
       });
       if (s === "music") return /*#__PURE__*/React.createElement(MusicScreen, {
         db: db,
@@ -11673,7 +11871,8 @@ function App() {
         isMobile: isMobile
       });
       if (s === "metronome") return /*#__PURE__*/React.createElement(PracticeToolsScreen, {
-        isMobile: isMobile
+        isMobile: isMobile,
+        user: user
       });
       if (s === "music") return /*#__PURE__*/React.createElement(MusicScreen, {
         db: db,
