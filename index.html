@@ -6586,28 +6586,39 @@ function AudioSpeedScreen({
   const [uploadPct, setUploadPct] = useState(0);
   const [playing, setPlaying] = useState(false);
   const [speed, setSpeed] = useState(1.0);
-  const [preservePitch, setPreservePitch] = useState(true);
-  const [loop, setLoop] = useState(false);
   const [curTime, setCurTime] = useState(0);
   const [duration, setDuration] = useState(0);
+  // 구간 반복(A-B repeat): null이면 미설정. {a,b} 둘 다 있으면 그 구간만 반복
+  const [repeatA, setRepeatA] = useState(null);
+  const [repeatB, setRepeatB] = useState(null);
+  const [pickMode, setPickMode] = useState(null); // "a" | "b" | null — 타임라인 클릭으로 지점 찍는 모드
+
   useEffect(() => {
     if (user?.id) loadAudioTracks(user.id).then(setTracks);else setTracks([]);
   }, [user?.id]);
-  const applyPitchSetting = (el, val) => {
+  const applyPitchSetting = el => {
     if (!el) return;
-    el.preservesPitch = val;
-    el.mozPreservesPitch = val;
-    el.webkitPreservesPitch = val;
+    // 음정 유지는 항상 켜둔다 (토글 제거)
+    el.preservesPitch = true;
+    el.mozPreservesPitch = true;
+    el.webkitPreservesPitch = true;
   };
   useEffect(() => {
-    if (audioRef.current) applyPitchSetting(audioRef.current, preservePitch);
-  }, [preservePitch, current]);
+    applyPitchSetting(audioRef.current);
+  }, [current]);
   useEffect(() => {
     if (audioRef.current) audioRef.current.playbackRate = speed;
   }, [speed, current]);
+
+  // 구간 반복 감시: 재생 중 B지점을 넘으면 A지점으로 되돌림
+  useEffect(() => {
+    if (repeatA == null || repeatB == null) return;
+    if (curTime >= repeatB) {
+      if (audioRef.current) audioRef.current.currentTime = repeatA;
+    }
+  }, [curTime, repeatA, repeatB]);
   const handleFileChange = async e => {
     const file = e.target.files?.[0];
-    // iOS Safari 대응: 입력 초기화(같은 파일 재선택 허용) + 파일 없을 때 조용히 무시
     e.target.value = "";
     if (!file) return;
     if (!user?.id) {
@@ -6663,6 +6674,9 @@ function AudioSpeedScreen({
       setCurTime(0);
       setDuration(0);
       setSpeed(1.0);
+      setRepeatA(null);
+      setRepeatB(null);
+      setPickMode(null);
     } catch (err) {
       console.error("음원 업로드 실패:", err);
       alert("음원 업로드에 실패했어요: " + (err.message || "알 수 없는 오류") + "\n다시 시도해주세요.");
@@ -6686,6 +6700,27 @@ function AudioSpeedScreen({
   const seek = ratio => {
     if (!audioRef.current || !duration) return;
     audioRef.current.currentTime = ratio * duration;
+  };
+  const handleTimelineClick = e => {
+    const r = e.currentTarget.getBoundingClientRect();
+    const ratio = (e.clientX - r.left) / r.width;
+    const t = ratio * duration;
+    if (pickMode === "a") {
+      const newA = Math.min(t, repeatB ?? duration);
+      setRepeatA(newA);
+      setPickMode(null);
+    } else if (pickMode === "b") {
+      const newB = Math.max(t, repeatA ?? 0);
+      setRepeatB(newB);
+      setPickMode(null);
+    } else {
+      seek(ratio);
+    }
+  };
+  const clearRepeat = () => {
+    setRepeatA(null);
+    setRepeatB(null);
+    setPickMode(null);
   };
   const ft = s => {
     if (!isFinite(s)) return "0:00";
@@ -6798,6 +6833,9 @@ function AudioSpeedScreen({
       setCurTime(0);
       setDuration(0);
       setSpeed(1.0);
+      setRepeatA(null);
+      setRepeatB(null);
+      setPickMode(null);
     },
     style: {
       display: "flex",
@@ -6845,16 +6883,18 @@ function AudioSpeedScreen({
   }, /*#__PURE__*/React.createElement("audio", {
     ref: audioRef,
     src: current.url,
-    loop: loop,
     onLoadedMetadata: () => {
       setDuration(audioRef.current?.duration || 0);
-      applyPitchSetting(audioRef.current, preservePitch);
+      applyPitchSetting(audioRef.current);
       if (audioRef.current) audioRef.current.playbackRate = speed;
     },
     onTimeUpdate: () => setCurTime(audioRef.current?.currentTime || 0),
     onPlay: () => setPlaying(true),
     onPause: () => setPlaying(false),
-    onEnded: () => setPlaying(false),
+    onEnded: () => {
+      // 구간 반복이 아닐 때만 종료 후 정지 (구간 반복은 useEffect가 처리)
+      if (repeatA == null || repeatB == null) setPlaying(false);
+    },
     style: {
       display: "none"
     }
@@ -6871,7 +6911,7 @@ function AudioSpeedScreen({
       display: "flex",
       flexDirection: "column",
       alignItems: "center",
-      marginBottom: 24
+      marginBottom: 16
     }
   }, /*#__PURE__*/React.createElement("button", {
     onClick: togglePlay,
@@ -6890,16 +6930,13 @@ function AudioSpeedScreen({
       justifyContent: "center"
     }
   }, playing ? "⏸" : "▶️"), /*#__PURE__*/React.createElement("div", {
-    onClick: e => {
-      const r = e.currentTarget.getBoundingClientRect();
-      seek((e.clientX - r.left) / r.width);
-    },
+    onClick: handleTimelineClick,
     style: {
       width: "100%",
-      height: 8,
+      height: 14,
       borderRadius: 99,
       background: C.border,
-      cursor: "pointer",
+      cursor: pickMode ? "crosshair" : "pointer",
       position: "relative",
       marginBottom: 6
     }
@@ -6911,7 +6948,45 @@ function AudioSpeedScreen({
       bottom: 0,
       borderRadius: 99,
       width: (duration ? curTime / duration * 100 : 0) + "%",
-      background: C.accent
+      background: C.accentDim
+    }
+  }), repeatA != null && repeatB != null && duration > 0 && /*#__PURE__*/React.createElement("div", {
+    style: {
+      position: "absolute",
+      top: 0,
+      bottom: 0,
+      background: C.green + "66",
+      left: repeatA / duration * 100 + "%",
+      width: (repeatB - repeatA) / duration * 100 + "%"
+    }
+  }), repeatA != null && duration > 0 && /*#__PURE__*/React.createElement("div", {
+    style: {
+      position: "absolute",
+      top: -4,
+      bottom: -4,
+      width: 3,
+      background: C.green,
+      left: repeatA / duration * 100 + "%",
+      borderRadius: 2
+    }
+  }), repeatB != null && duration > 0 && /*#__PURE__*/React.createElement("div", {
+    style: {
+      position: "absolute",
+      top: -4,
+      bottom: -4,
+      width: 3,
+      background: C.red,
+      left: repeatB / duration * 100 + "%",
+      borderRadius: 2
+    }
+  }), /*#__PURE__*/React.createElement("div", {
+    style: {
+      position: "absolute",
+      top: -3,
+      bottom: -3,
+      width: 2,
+      background: "#fff",
+      left: (duration ? curTime / duration * 100 : 0) + "%"
     }
   })), /*#__PURE__*/React.createElement("div", {
     style: {
@@ -6922,6 +6997,82 @@ function AudioSpeedScreen({
       color: C.text3
     }
   }, /*#__PURE__*/React.createElement("span", null, ft(curTime)), /*#__PURE__*/React.createElement("span", null, ft(duration)))), /*#__PURE__*/React.createElement("div", {
+    style: {
+      background: C.surface,
+      borderRadius: 14,
+      padding: "14px 16px",
+      marginBottom: 14
+    }
+  }, /*#__PURE__*/React.createElement("div", {
+    style: {
+      fontSize: 12,
+      fontWeight: 700,
+      color: C.text,
+      marginBottom: 10,
+      display: "flex",
+      alignItems: "center",
+      gap: 6
+    }
+  }, "🔁 구간 반복", repeatA != null && repeatB != null && /*#__PURE__*/React.createElement("span", {
+    style: {
+      fontSize: 11,
+      color: C.green,
+      fontWeight: 700
+    }
+  }, "(", ft(repeatA), " ~ ", ft(repeatB), ")")), /*#__PURE__*/React.createElement("div", {
+    style: {
+      display: "flex",
+      gap: 8
+    }
+  }, /*#__PURE__*/React.createElement("button", {
+    onClick: () => setPickMode(pickMode === "a" ? null : "a"),
+    style: {
+      flex: 1,
+      padding: "9px 0",
+      borderRadius: 10,
+      border: "none",
+      cursor: "pointer",
+      fontFamily: "inherit",
+      fontSize: 12,
+      fontWeight: 700,
+      background: pickMode === "a" ? C.green : C.card,
+      color: pickMode === "a" ? "#fff" : C.green
+    }
+  }, pickMode === "a" ? "타임라인 탭하기" : repeatA != null ? "A: " + ft(repeatA) : "A 지점 설정"), /*#__PURE__*/React.createElement("button", {
+    onClick: () => setPickMode(pickMode === "b" ? null : "b"),
+    style: {
+      flex: 1,
+      padding: "9px 0",
+      borderRadius: 10,
+      border: "none",
+      cursor: "pointer",
+      fontFamily: "inherit",
+      fontSize: 12,
+      fontWeight: 700,
+      background: pickMode === "b" ? C.red : C.card,
+      color: pickMode === "b" ? "#fff" : C.red
+    }
+  }, pickMode === "b" ? "타임라인 탭하기" : repeatB != null ? "B: " + ft(repeatB) : "B 지점 설정"), (repeatA != null || repeatB != null) && /*#__PURE__*/React.createElement("button", {
+    onClick: clearRepeat,
+    style: {
+      padding: "9px 14px",
+      borderRadius: 10,
+      border: `1px solid ${C.border}`,
+      cursor: "pointer",
+      fontFamily: "inherit",
+      fontSize: 12,
+      fontWeight: 700,
+      background: "none",
+      color: C.text3
+    }
+  }, "해제")), /*#__PURE__*/React.createElement("div", {
+    style: {
+      fontSize: 10,
+      color: C.text3,
+      marginTop: 8,
+      lineHeight: 1.5
+    }
+  }, "A/B 버튼을 누른 뒤 위 타임라인에서 원하는 지점을 탭하세요. 두 지점 모두 설정하면 그 구간만 반복 재생됩니다.")), /*#__PURE__*/React.createElement("div", {
     style: {
       background: C.surface,
       borderRadius: 14,
@@ -6976,97 +7127,11 @@ function AudioSpeedScreen({
     }
   }, p, "x")))), /*#__PURE__*/React.createElement("div", {
     style: {
-      display: "flex",
-      flexDirection: "column",
-      gap: 10
-    }
-  }, /*#__PURE__*/React.createElement("div", {
-    style: {
-      display: "flex",
-      alignItems: "center",
-      justifyContent: "space-between",
-      background: C.surface,
-      borderRadius: 12,
-      padding: "12px 16px"
-    }
-  }, /*#__PURE__*/React.createElement("div", null, /*#__PURE__*/React.createElement("div", {
-    style: {
-      fontSize: 13,
-      fontWeight: 700,
-      color: C.text
-    }
-  }, "🎼 음정 유지"), /*#__PURE__*/React.createElement("div", {
-    style: {
       fontSize: 11,
-      color: C.text3,
-      marginTop: 1
+      color: C.text4,
+      textAlign: "center"
     }
-  }, "속도를 바꿔도 음정은 그대로 유지")), /*#__PURE__*/React.createElement("button", {
-    onClick: () => setPreservePitch(v => !v),
-    style: {
-      width: 48,
-      height: 26,
-      borderRadius: 14,
-      border: "none",
-      cursor: "pointer",
-      background: preservePitch ? C.accent : "#444",
-      position: "relative"
-    }
-  }, /*#__PURE__*/React.createElement("div", {
-    style: {
-      width: 20,
-      height: 20,
-      borderRadius: "50%",
-      background: "#fff",
-      position: "absolute",
-      top: 3,
-      transition: "left .2s",
-      left: preservePitch ? "25px" : "3px"
-    }
-  }))), /*#__PURE__*/React.createElement("div", {
-    style: {
-      display: "flex",
-      alignItems: "center",
-      justifyContent: "space-between",
-      background: C.surface,
-      borderRadius: 12,
-      padding: "12px 16px"
-    }
-  }, /*#__PURE__*/React.createElement("div", null, /*#__PURE__*/React.createElement("div", {
-    style: {
-      fontSize: 13,
-      fontWeight: 700,
-      color: C.text
-    }
-  }, "🔁 반복 재생"), /*#__PURE__*/React.createElement("div", {
-    style: {
-      fontSize: 11,
-      color: C.text3,
-      marginTop: 1
-    }
-  }, "끝까지 재생 후 처음부터 다시")), /*#__PURE__*/React.createElement("button", {
-    onClick: () => setLoop(v => !v),
-    style: {
-      width: 48,
-      height: 26,
-      borderRadius: 14,
-      border: "none",
-      cursor: "pointer",
-      background: loop ? C.accent : "#444",
-      position: "relative"
-    }
-  }, /*#__PURE__*/React.createElement("div", {
-    style: {
-      width: 20,
-      height: 20,
-      borderRadius: "50%",
-      background: "#fff",
-      position: "absolute",
-      top: 3,
-      transition: "left .2s",
-      left: loop ? "25px" : "3px"
-    }
-  })))))));
+  }, "🎼 음정은 항상 유지된 상태로 재생됩니다"))));
 }
 
 /* ── 연습 도구 (메트로놈 + 속도조절 서브탭) ────────────────── */
