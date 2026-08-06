@@ -2073,6 +2073,10 @@ const Sidebar = memo(({
     ic: "👥",
     lb: "학생 관리"
   }, {
+    id: "metronome",
+    ic: "🎚️",
+    lb: "연습도구"
+  }, {
     id: "music",
     ic: "🎵",
     lb: "음악"
@@ -2260,6 +2264,10 @@ const TabBar = memo(({
     id: "students",
     ic: "👥",
     lb: "학생"
+  }, {
+    id: "metronome",
+    ic: "🎚️",
+    lb: "연습도구"
   }, {
     id: "music",
     ic: "🎵",
@@ -11622,6 +11630,9 @@ function App() {
         db: db,
         user: user,
         setView: setView,
+        isMobile: isMobile
+      });
+      if (s === "metronome") return /*#__PURE__*/React.createElement(PracticeToolsScreen, {
         isMobile: isMobile
       });
       if (s === "music") return /*#__PURE__*/React.createElement(MusicScreen, {
