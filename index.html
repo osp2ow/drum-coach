@@ -6580,6 +6580,7 @@ function AudioSpeedScreen({
 }) {
   const audioRef = useRef(null);
   const fileInputRef = useRef(null);
+  const timelineRef = useRef(null);
   const [tracks, setTracks] = useState(null); // 저장된 음원 목록 (null=로딩중)
   const [current, setCurrent] = useState(null); // 현재 재생중인 트랙 {id,name,url}
   const [uploading, setUploading] = useState(false);
@@ -6588,17 +6589,16 @@ function AudioSpeedScreen({
   const [speed, setSpeed] = useState(1.0);
   const [curTime, setCurTime] = useState(0);
   const [duration, setDuration] = useState(0);
+  const [dragging, setDragging] = useState(false);
   // 구간 반복(A-B repeat): null이면 미설정. {a,b} 둘 다 있으면 그 구간만 반복
   const [repeatA, setRepeatA] = useState(null);
   const [repeatB, setRepeatB] = useState(null);
-  const [pickMode, setPickMode] = useState(null); // "a" | "b" | null — 타임라인 클릭으로 지점 찍는 모드
-
   useEffect(() => {
     if (user?.id) loadAudioTracks(user.id).then(setTracks);else setTracks([]);
   }, [user?.id]);
   const applyPitchSetting = el => {
     if (!el) return;
-    // 음정 유지는 항상 켜둔다 (토글 제거)
+    // 음정 유지는 항상 켜둔다 (토글 없음)
     el.preservesPitch = true;
     el.mozPreservesPitch = true;
     el.webkitPreservesPitch = true;
@@ -6676,7 +6676,6 @@ function AudioSpeedScreen({
       setSpeed(1.0);
       setRepeatA(null);
       setRepeatB(null);
-      setPickMode(null);
     } catch (err) {
       console.error("음원 업로드 실패:", err);
       alert("음원 업로드에 실패했어요: " + (err.message || "알 수 없는 오류") + "\n다시 시도해주세요.");
@@ -6697,30 +6696,58 @@ function AudioSpeedScreen({
     if (!audioRef.current) return;
     if (playing) audioRef.current.pause();else audioRef.current.play().catch(() => {});
   };
-  const seek = ratio => {
+  const seekToRatio = ratio => {
     if (!audioRef.current || !duration) return;
-    audioRef.current.currentTime = ratio * duration;
+    const r = Math.min(1, Math.max(0, ratio));
+    audioRef.current.currentTime = r * duration;
+    setCurTime(r * duration);
   };
-  const handleTimelineClick = e => {
-    const r = e.currentTarget.getBoundingClientRect();
-    const ratio = (e.clientX - r.left) / r.width;
-    const t = ratio * duration;
-    if (pickMode === "a") {
-      const newA = Math.min(t, repeatB ?? duration);
-      setRepeatA(newA);
-      setPickMode(null);
-    } else if (pickMode === "b") {
-      const newB = Math.max(t, repeatA ?? 0);
-      setRepeatB(newB);
-      setPickMode(null);
-    } else {
-      seek(ratio);
-    }
+  const ratioFromEvent = e => {
+    const el = timelineRef.current;
+    if (!el) return 0;
+    const r = el.getBoundingClientRect();
+    const clientX = e.touches ? e.touches[0].clientX : e.clientX;
+    return (clientX - r.left) / r.width;
+  };
+
+  // 타임라인 클릭 + 드래그 탐색 (마우스 & 터치 모두 지원)
+  const handleTimelineDown = e => {
+    setDragging(true);
+    seekToRatio(ratioFromEvent(e));
+  };
+  useEffect(() => {
+    if (!dragging) return;
+    const onMove = e => {
+      e.preventDefault();
+      seekToRatio(ratioFromEvent(e));
+    };
+    const onUp = () => setDragging(false);
+    window.addEventListener("mousemove", onMove);
+    window.addEventListener("mouseup", onUp);
+    window.addEventListener("touchmove", onMove, {
+      passive: false
+    });
+    window.addEventListener("touchend", onUp);
+    return () => {
+      window.removeEventListener("mousemove", onMove);
+      window.removeEventListener("mouseup", onUp);
+      window.removeEventListener("touchmove", onMove);
+      window.removeEventListener("touchend", onUp);
+    };
+  }, [dragging, duration]);
+
+  // A/B 지점: 현재 재생 위치를 바로 지정
+  const setPointA = () => {
+    const t = curTime;
+    setRepeatA(repeatB != null ? Math.min(t, repeatB) : t);
+  };
+  const setPointB = () => {
+    const t = curTime;
+    setRepeatB(repeatA != null ? Math.max(t, repeatA) : t);
   };
   const clearRepeat = () => {
     setRepeatA(null);
     setRepeatB(null);
-    setPickMode(null);
   };
   const ft = s => {
     if (!isFinite(s)) return "0:00";
@@ -6835,7 +6862,6 @@ function AudioSpeedScreen({
       setSpeed(1.0);
       setRepeatA(null);
       setRepeatB(null);
-      setPickMode(null);
     },
     style: {
       display: "flex",
@@ -6888,11 +6914,12 @@ function AudioSpeedScreen({
       applyPitchSetting(audioRef.current);
       if (audioRef.current) audioRef.current.playbackRate = speed;
     },
-    onTimeUpdate: () => setCurTime(audioRef.current?.currentTime || 0),
+    onTimeUpdate: () => {
+      if (!dragging) setCurTime(audioRef.current?.currentTime || 0);
+    },
     onPlay: () => setPlaying(true),
     onPause: () => setPlaying(false),
     onEnded: () => {
-      // 구간 반복이 아닐 때만 종료 후 정지 (구간 반복은 useEffect가 처리)
       if (repeatA == null || repeatB == null) setPlaying(false);
     },
     style: {
@@ -6930,15 +6957,18 @@ function AudioSpeedScreen({
       justifyContent: "center"
     }
   }, playing ? "⏸" : "▶️"), /*#__PURE__*/React.createElement("div", {
-    onClick: handleTimelineClick,
+    ref: timelineRef,
+    onMouseDown: handleTimelineDown,
+    onTouchStart: handleTimelineDown,
     style: {
       width: "100%",
-      height: 14,
+      height: 16,
       borderRadius: 99,
       background: C.border,
-      cursor: pickMode ? "crosshair" : "pointer",
+      cursor: "pointer",
       position: "relative",
-      marginBottom: 6
+      marginBottom: 6,
+      touchAction: "none"
     }
   }, /*#__PURE__*/React.createElement("div", {
     style: {
@@ -6948,7 +6978,8 @@ function AudioSpeedScreen({
       bottom: 0,
       borderRadius: 99,
       width: (duration ? curTime / duration * 100 : 0) + "%",
-      background: C.accentDim
+      background: C.accentDim,
+      pointerEvents: "none"
     }
   }), repeatA != null && repeatB != null && duration > 0 && /*#__PURE__*/React.createElement("div", {
     style: {
@@ -6957,7 +6988,8 @@ function AudioSpeedScreen({
       bottom: 0,
       background: C.green + "66",
       left: repeatA / duration * 100 + "%",
-      width: (repeatB - repeatA) / duration * 100 + "%"
+      width: (repeatB - repeatA) / duration * 100 + "%",
+      pointerEvents: "none"
     }
   }), repeatA != null && duration > 0 && /*#__PURE__*/React.createElement("div", {
     style: {
@@ -6967,7 +6999,8 @@ function AudioSpeedScreen({
       width: 3,
       background: C.green,
       left: repeatA / duration * 100 + "%",
-      borderRadius: 2
+      borderRadius: 2,
+      pointerEvents: "none"
     }
   }), repeatB != null && duration > 0 && /*#__PURE__*/React.createElement("div", {
     style: {
@@ -6977,16 +7010,22 @@ function AudioSpeedScreen({
       width: 3,
       background: C.red,
       left: repeatB / duration * 100 + "%",
-      borderRadius: 2
+      borderRadius: 2,
+      pointerEvents: "none"
     }
   }), /*#__PURE__*/React.createElement("div", {
     style: {
       position: "absolute",
-      top: -3,
-      bottom: -3,
-      width: 2,
+      top: "50%",
+      width: dragging ? 18 : 14,
+      height: dragging ? 18 : 14,
+      borderRadius: "50%",
       background: "#fff",
-      left: (duration ? curTime / duration * 100 : 0) + "%"
+      boxShadow: "0 1px 4px rgba(0,0,0,0.4)",
+      left: (duration ? curTime / duration * 100 : 0) + "%",
+      transform: "translate(-50%,-50%)",
+      transition: dragging ? "none" : "width .1s,height .1s",
+      pointerEvents: "none"
     }
   })), /*#__PURE__*/React.createElement("div", {
     style: {
@@ -7025,7 +7064,7 @@ function AudioSpeedScreen({
       gap: 8
     }
   }, /*#__PURE__*/React.createElement("button", {
-    onClick: () => setPickMode(pickMode === "a" ? null : "a"),
+    onClick: setPointA,
     style: {
       flex: 1,
       padding: "9px 0",
@@ -7035,11 +7074,11 @@ function AudioSpeedScreen({
       fontFamily: "inherit",
       fontSize: 12,
       fontWeight: 700,
-      background: pickMode === "a" ? C.green : C.card,
-      color: pickMode === "a" ? "#fff" : C.green
+      background: C.green,
+      color: "#fff"
     }
-  }, pickMode === "a" ? "타임라인 탭하기" : repeatA != null ? "A: " + ft(repeatA) : "A 지점 설정"), /*#__PURE__*/React.createElement("button", {
-    onClick: () => setPickMode(pickMode === "b" ? null : "b"),
+  }, repeatA != null ? "A: " + ft(repeatA) : "A 지점"), /*#__PURE__*/React.createElement("button", {
+    onClick: setPointB,
     style: {
       flex: 1,
       padding: "9px 0",
@@ -7049,21 +7088,21 @@ function AudioSpeedScreen({
       fontFamily: "inherit",
       fontSize: 12,
       fontWeight: 700,
-      background: pickMode === "b" ? C.red : C.card,
-      color: pickMode === "b" ? "#fff" : C.red
+      background: C.red,
+      color: "#fff"
     }
-  }, pickMode === "b" ? "타임라인 탭하기" : repeatB != null ? "B: " + ft(repeatB) : "B 지점 설정"), (repeatA != null || repeatB != null) && /*#__PURE__*/React.createElement("button", {
+  }, repeatB != null ? "B: " + ft(repeatB) : "B 지점"), (repeatA != null || repeatB != null) && /*#__PURE__*/React.createElement("button", {
     onClick: clearRepeat,
     style: {
       padding: "9px 14px",
       borderRadius: 10,
-      border: `1px solid ${C.border}`,
+      border: "none",
       cursor: "pointer",
       fontFamily: "inherit",
       fontSize: 12,
       fontWeight: 700,
-      background: "none",
-      color: C.text3
+      background: C.orange,
+      color: "#fff"
     }
   }, "해제")), /*#__PURE__*/React.createElement("div", {
     style: {
@@ -7072,7 +7111,7 @@ function AudioSpeedScreen({
       marginTop: 8,
       lineHeight: 1.5
     }
-  }, "A/B 버튼을 누른 뒤 위 타임라인에서 원하는 지점을 탭하세요. 두 지점 모두 설정하면 그 구간만 반복 재생됩니다.")), /*#__PURE__*/React.createElement("div", {
+  }, "재생 중 원하는 지점에서 A, B 버튼을 누르면 그 위치가 저장됩니다. 두 지점이 설정되면 그 구간만 반복 재생돼요.")), /*#__PURE__*/React.createElement("div", {
     style: {
       background: C.surface,
       borderRadius: 14,
