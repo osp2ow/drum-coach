@@ -7496,93 +7496,121 @@ function ExamPracticeScreen({
   onNext
 }) {
   const [phase, setPhase] = useState("ready"); // ready | countIn | playing | done
-  const [countNum, setCountNum] = useState(4);
+  const [countNum, setCountNum] = useState(question.countInBeats || 4);
   const [timeLeft, setTimeLeft] = useState(question.duration || 30);
   const audioCtxRef = useRef(null);
-  const timerRef = useRef(null);
+  const schedulerRef = useRef(null); // 25ms 틱으로 도는 통합 스케줄러 (setInterval)
+  const uiTimerRef = useRef(null); // 연주 시간 카운트다운 표시용
+  const nextNoteTimeRef = useRef(0);
+  const beatCountRef = useRef(0); // 카운트인부터 이어지는 전체 박자 번호
   const mrRef = useRef(null);
-  const metrIntervalRef = useRef(null);
-  useEffect(() => () => {
-    clearInterval(timerRef.current);
-    clearInterval(metrIntervalRef.current);
-    if (mrRef.current) {
-      mrRef.current.pause();
-    }
-  }, []);
+  const startedRef = useRef(false); // 중복 시작 방지
+
+  const cleanupAll = () => {
+    clearInterval(schedulerRef.current);
+    clearInterval(uiTimerRef.current);
+    if (mrRef.current) mrRef.current.pause();
+  };
+  useEffect(() => () => cleanupAll(), []);
   const getCtx = () => {
     if (!audioCtxRef.current) audioCtxRef.current = new (window.AudioContext || window.webkitAudioContext)();
     if (audioCtxRef.current.state === "suspended") audioCtxRef.current.resume();
     return audioCtxRef.current;
   };
-  const clickSound = accent => {
-    const ctx = getCtx();
+  const clickAt = (ctx, time, accent) => {
     const o = ctx.createOscillator(),
       g = ctx.createGain();
     o.connect(g);
     g.connect(ctx.destination);
     o.frequency.value = accent ? 1300 : 900;
-    g.gain.setValueAtTime(accent ? 0.9 : 0.6, ctx.currentTime);
-    g.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 0.09);
-    o.start();
-    o.stop(ctx.currentTime + 0.09);
+    g.gain.setValueAtTime(accent ? 0.9 : 0.6, time);
+    g.gain.exponentialRampToValueAtTime(0.001, time + 0.09);
+    o.start(time);
+    o.stop(time + 0.09);
   };
-  const startCountIn = () => {
-    unlockSilentAudio(); // 아이폰 무음 모드에서도 소리 나오게 (MR 재생 포함)
+
+  // 카운트인 + 연주 메트로놈을 하나의 오디오 시계로 이어서 스케줄링 (어긋남 방지)
+  const startSequence = () => {
+    if (startedRef.current) return;
+    startedRef.current = true;
+    unlockSilentAudio(); // 아이폰 무음 모드에서도 소리 나오게
     setPhase("countIn");
-    const beats = question.countInBeats || 4;
-    const bpmForCount = question.mode === "metronome" ? question.bpm || 80 : 80;
-    const interval = 60000 / bpmForCount;
-    let n = beats;
-    setCountNum(n);
-    clickSound(true); // 첫 박(가장 큰 숫자)만 강박(띠)
-    const tick = setInterval(() => {
-      n--;
-      if (n <= 0) {
-        clearInterval(tick);
-        startPlaying();
-      } else {
-        setCountNum(n);
-        clickSound(false); // 나머지 박(3,2,1)은 모두 약박(또)
-      }
-    }, interval);
-  };
-  const startPlaying = () => {
-    setPhase("playing");
+    const ctx = getCtx();
+    const countBeats = question.countInBeats || 4;
+    const countBpm = question.mode === "metronome" ? question.bpm || 80 : 80;
+    const playBpm = question.bpm || 80;
     const dur = question.duration || 30;
-    setTimeLeft(dur);
-    if (question.mode === "metronome") {
-      const ctx = getCtx();
-      let nextNote = ctx.currentTime + 0.05,
-        beat = 0;
-      metrIntervalRef.current = setInterval(() => {
-        while (nextNote < ctx.currentTime + 0.1) {
-          clickSound(beat % 4 === 0);
-          beat++;
-          nextNote += 60 / (question.bpm || 80);
+    beatCountRef.current = 0;
+    nextNoteTimeRef.current = ctx.currentTime + 0.06;
+    setCountNum(countBeats);
+    let playStarted = false;
+    let playStartAudioTime = null;
+    schedulerRef.current = setInterval(() => {
+      while (nextNoteTimeRef.current < ctx.currentTime + 0.12) {
+        const beat = beatCountRef.current;
+        const t = nextNoteTimeRef.current;
+        if (beat < countBeats) {
+          // ── 카운트인 구간 (첫 박만 강박) ──
+          const isFirst = beat === 0;
+          clickAt(ctx, t, isFirst);
+          const displayNum = countBeats - beat;
+          const delayMs = Math.max(0, (t - ctx.currentTime) * 1000);
+          setTimeout(() => setCountNum(displayNum), delayMs);
+          nextNoteTimeRef.current += 60 / countBpm;
+        } else {
+          // ── 연주 구간: 카운트인 끝난 바로 다음 박에서 이어서 시작 ──
+          const playBeatIdx = beat - countBeats;
+          if (!playStarted) {
+            playStarted = true;
+            playStartAudioTime = t;
+            const delayMs = Math.max(0, (t - ctx.currentTime) * 1000);
+            setTimeout(() => {
+              setPhase("playing");
+              setTimeLeft(dur);
+              if (question.mode === "mr" && mrRef.current) {
+                mrRef.current.currentTime = 0;
+                mrRef.current.play().catch(() => {});
+              }
+            }, delayMs);
+          }
+          if (question.mode === "metronome") {
+            clickAt(ctx, t, playBeatIdx % 4 === 0);
+          }
+          nextNoteTimeRef.current += 60 / playBpm;
+
+          // 연주 시간이 다 찼는지 오디오 시계 기준으로 정확히 판단
+          if (playStartAudioTime != null && t - playStartAudioTime >= dur) {
+            clearInterval(schedulerRef.current);
+          }
         }
-      }, 25);
-    } else if (question.mode === "mr" && mrRef.current) {
-      mrRef.current.currentTime = 0;
-      mrRef.current.play().catch(() => {});
-    }
-    timerRef.current = setInterval(() => {
-      setTimeLeft(t => {
-        if (t <= 1) {
-          clearInterval(timerRef.current);
-          clearInterval(metrIntervalRef.current);
-          if (mrRef.current) mrRef.current.pause();
-          setPhase("done");
-          return 0;
-        }
-        return t - 1;
-      });
-    }, 1000);
+        beatCountRef.current++;
+      }
+    }, 20);
+
+    // 화면에 표시할 남은 시간(초)은 실제 시각(Date.now) 기준으로 별도 갱신 → 부드럽고 정확함
+    let uiStarted = false;
+    uiTimerRef.current = setInterval(() => {
+      if (!playStarted) return;
+      if (!uiStarted) {
+        uiStarted = true;
+      }
+      const elapsedAudio = ctx.currentTime - playStartAudioTime;
+      const remain = Math.max(0, Math.ceil(dur - elapsedAudio));
+      setTimeLeft(remain);
+      if (elapsedAudio >= dur) {
+        clearInterval(uiTimerRef.current);
+        clearInterval(schedulerRef.current);
+        if (mrRef.current) mrRef.current.pause();
+        setPhase("done");
+      }
+    }, 200);
   };
   const handleRetry = () => {
-    clearInterval(timerRef.current);
-    clearInterval(metrIntervalRef.current);
-    if (mrRef.current) mrRef.current.pause();
+    cleanupAll();
+    startedRef.current = false;
     setPhase("ready");
+    setCountNum(question.countInBeats || 4);
+    setTimeLeft(question.duration || 30);
   };
   const dur = question.duration || 30;
   const progressPct = phase === "playing" ? (dur - timeLeft) / dur * 100 : 0;
@@ -7759,7 +7787,7 @@ function ExamPracticeScreen({
       marginTop: 1
     }
   }, "카운트인")))), /*#__PURE__*/React.createElement("button", {
-    onClick: startCountIn,
+    onClick: startSequence,
     style: {
       width: "100%",
       padding: "20px 0",
@@ -7870,7 +7898,7 @@ function ExamPracticeScreen({
       height: "100%",
       borderRadius: 99,
       background: `linear-gradient(90deg,${C.green},#4AE374)`,
-      transition: "width 1s linear"
+      transition: "width .2s linear"
     }
   }))), phase === "done" && /*#__PURE__*/React.createElement("div", {
     style: {
@@ -7909,7 +7937,10 @@ function ExamPracticeScreen({
       marginBottom: 32
     }
   }, "완료!"), isExam ? /*#__PURE__*/React.createElement("button", {
-    onClick: onNext,
+    onClick: () => {
+      cleanupAll();
+      onNext();
+    },
     style: {
       width: "100%",
       padding: "18px 0",
