@@ -5,13 +5,13 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
   <meta name="apple-mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-  <meta name="theme-color" content="#0C0C0E">
+  <meta name="theme-color" content="#151519">
   <meta property="og:title" content="Drum Coach">
   <meta property="og:description" content="레슨 이후의 연습을 잇다">
   <title>Drum Coach 🥁</title>
   <style>
     *, *::before, *::after { box-sizing: border-box; }
-    html, body { margin: 0; padding: 0; background: #0C0C0E; overflow: hidden; }
+    html, body { margin: 0; padding: 0; background: #151519; overflow: hidden; }
     /* html/body/root 모두 화면 정확히 채우기 */
     html { height: -webkit-fill-available; }
     body { height: 100vh; height: -webkit-fill-available; }
@@ -104,27 +104,27 @@ const {
 ================================================================ */
 
 const C = {
-  bg: "#0C0C0E",
-  surface: "#18181B",
-  card: "#1E1E23",
-  border: "#2C2C34",
-  borderHov: "#3A3A45",
+  bg: "#151519",
+  surface: "#1E1E24",
+  card: "#28282F",
+  border: "#38383F",
+  borderHov: "#48484F",
   accent: "#FF6B35",
-  accentDim: "rgba(255,107,53,0.14)",
-  accentDim2: "rgba(255,107,53,0.07)",
+  accentDim: "rgba(255,107,53,0.16)",
+  accentDim2: "rgba(255,107,53,0.08)",
   green: "#30D158",
-  greenDim: "rgba(48,209,88,0.14)",
+  greenDim: "rgba(48,209,88,0.16)",
   blue: "#0A84FF",
-  blueDim: "rgba(10,132,255,0.14)",
+  blueDim: "rgba(10,132,255,0.16)",
   orange: "#FF9F0A",
-  orangeDim: "rgba(255,159,10,0.14)",
+  orangeDim: "rgba(255,159,10,0.16)",
   red: "#FF453A",
-  redDim: "rgba(255,69,58,0.14)",
-  text: "#F0F0F5",
-  text2: "rgba(240,240,245,0.60)",
-  text3: "rgba(240,240,245,0.36)",
-  text4: "rgba(240,240,245,0.16)",
-  tabBar: "rgba(14,14,17,0.96)"
+  redDim: "rgba(255,69,58,0.16)",
+  text: "#F5F5F8",
+  text2: "rgba(245,245,248,0.66)",
+  text3: "rgba(245,245,248,0.46)",
+  text4: "rgba(245,245,248,0.26)",
+  tabBar: "rgba(21,21,25,0.96)"
 };
 const AVATAR_COLORS = ["#FF6B35", "#5E5CE6", "#30D158", "#0A84FF", "#FF9F0A", "#BF5AF2", "#FF2D55"];
 const avatarColor = n => AVATAR_COLORS[(n || "?").charCodeAt(0) % AVATAR_COLORS.length];
@@ -12089,7 +12089,7 @@ function App() {
   /* ── Firebase 미설정 시 안내 화면 ── */
   function SetupScreen() {
     var s = {
-      bg: {minHeight:"100vh", background:"#0C0C0E", display:"flex", alignItems:"center",
+      bg: {minHeight:"100vh", background:"#151519", display:"flex", alignItems:"center",
            justifyContent:"center", fontFamily:"-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif",
            padding:"24px"},
       card: {maxWidth:520, width:"100%", background:"#1E1E23", borderRadius:20,
@@ -12102,7 +12102,7 @@ function App() {
             fontWeight:900, fontSize:13, display:"flex", alignItems:"center", justifyContent:"center", flexShrink:0},
       stepTitle: {fontSize:14, fontWeight:700, color:"#F0F0F5", marginBottom:4},
       stepDesc: {fontSize:12, color:"rgba(240,240,245,0.5)", lineHeight:1.6},
-      code: {display:"block", marginTop:6, background:"#0C0C0E", borderRadius:8,
+      code: {display:"block", marginTop:6, background:"#151519", borderRadius:8,
              padding:"8px 12px", fontSize:11, fontFamily:"monospace", color:"#FF9F0A",
              wordBreak:"break-all"},
       rule: {marginTop:18, padding:"12px 14px", background:"rgba(10,132,255,0.12)",
