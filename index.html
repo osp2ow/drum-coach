@@ -7533,7 +7533,7 @@ function ExamPracticeScreen({
     const interval = 60000 / bpmForCount;
     let n = beats;
     setCountNum(n);
-    clickSound(true);
+    clickSound(true); // 첫 박(가장 큰 숫자)만 강박(띠)
     const tick = setInterval(() => {
       n--;
       if (n <= 0) {
@@ -7541,7 +7541,7 @@ function ExamPracticeScreen({
         startPlaying();
       } else {
         setCountNum(n);
-        clickSound(n === 1);
+        clickSound(false); // 나머지 박(3,2,1)은 모두 약박(또)
       }
     }, interval);
   };
