@@ -7632,11 +7632,20 @@ function ExamPracticeScreen({
       fontSize: 13,
       fontWeight: 700,
       color: C.text3,
-      marginBottom: 10,
+      marginBottom: 6,
       letterSpacing: 0.5,
       textTransform: "uppercase"
     }
-  }, question.genre), phase === "ready" && /*#__PURE__*/React.createElement("div", {
+  }, question.genre), /*#__PURE__*/React.createElement("div", {
+    style: {
+      fontSize: 26,
+      fontWeight: 900,
+      color: C.text,
+      marginBottom: 24,
+      textAlign: "center",
+      lineHeight: 1.3
+    }
+  }, question.title), phase === "ready" && /*#__PURE__*/React.createElement("div", {
     style: {
       textAlign: "center",
       width: "100%",
