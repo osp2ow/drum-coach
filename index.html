@@ -8418,7 +8418,8 @@ function PracticeToolsScreen({
   }
 
   // 메트로놈 서브탭은 우선 숨김 처리 (필요시 아래 배열에 ["metronome","🥁 메트로놈"] 다시 추가하면 복원됨)
-  const subTabs = isTeacher ? [["speed", "🎚️ 속도조절"], ["exam", "🎤 입시모의고사"]] : [["speed", "🎚️ 속도조절"]];
+  // 입시모의고사는 이제 선생님/학생 모두에게 공개
+  const subTabs = [["speed", "🎚️ 속도조절"], ["exam", "🎤 입시모의고사"]];
   return /*#__PURE__*/React.createElement("div", {
     style: {
       flex: 1,
@@ -8428,7 +8429,7 @@ function PracticeToolsScreen({
     }
   }, /*#__PURE__*/React.createElement(PageHeader, {
     title: "연습 도구",
-    sub: isTeacher ? "음원 속도조절 · 입시 모의고사" : "음원 속도조절",
+    sub: "음원 속도조절 · 입시 모의고사",
     isMobile: isMobile
   }), /*#__PURE__*/React.createElement("div", {
     style: {
@@ -8460,7 +8461,7 @@ function PracticeToolsScreen({
     hideHeader: true,
     user: user,
     onOpenTrack: setOpenTrack
-  }), tab === "exam" && isTeacher && /*#__PURE__*/React.createElement(ExamListScreen, {
+  }), tab === "exam" && /*#__PURE__*/React.createElement(ExamListScreen, {
     isMobile: isMobile,
     user: user,
     hideHeader: true,
