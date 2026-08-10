@@ -8419,7 +8419,7 @@ function PracticeToolsScreen({
 
   // 메트로놈 서브탭은 우선 숨김 처리 (필요시 아래 배열에 ["metronome","🥁 메트로놈"] 다시 추가하면 복원됨)
   // 입시모의고사는 이제 선생님/학생 모두에게 공개
-  const subTabs = [["speed", "🎚️ 속도조절"], ["exam", "🎤 입시모의고사"]];
+  const subTabs = [["speed", "속도조절"], ["exam", "입시모의고사"]];
   return /*#__PURE__*/React.createElement("div", {
     style: {
       flex: 1,
@@ -8438,20 +8438,22 @@ function PracticeToolsScreen({
       flexShrink: 0,
       background: C.bg
     }
-  }, subTabs.map(([t, l]) => /*#__PURE__*/React.createElement("button", {
+  }, subTabs.map(([t, l], i) => /*#__PURE__*/React.createElement("button", {
     key: t,
     onClick: () => setTab(t),
     style: {
       flex: 1,
-      padding: "12px 0",
+      padding: "13px 0",
       border: "none",
       cursor: "pointer",
       fontFamily: "inherit",
-      fontSize: 12,
+      fontSize: 13,
       fontWeight: 700,
-      background: "none",
+      background: tab === t ? C.accentDim : "none",
       color: tab === t ? C.accent : C.text3,
-      borderBottom: tab === t ? `2px solid ${C.accent}` : "2px solid transparent"
+      borderRight: i < subTabs.length - 1 ? `1px solid ${C.border}` : "none",
+      borderBottom: tab === t ? `2px solid ${C.accent}` : "2px solid transparent",
+      transition: "background .15s,color .15s"
     }
   }, l))), tab === "metronome" && /*#__PURE__*/React.createElement(MetronomeScreen, {
     isMobile: isMobile,
