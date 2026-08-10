@@ -12526,6 +12526,130 @@ const DataBackupCard = memo(({
 });
 
 /* ── 프로필 (공통) ───────────────────────────────────────── */
+
+/* ── 계정 설정 모달 (아이디/비밀번호 변경) ────────────────── */
+const AccountEditModal = memo(({
+  user,
+  db,
+  setDB,
+  onClose,
+  isMobile
+}) => {
+  const curPwRef = useRef("");
+  const newNameRef = useRef(user.name);
+  const newPwRef = useRef("");
+  const newPwConfirmRef = useRef("");
+  const [err, setErr] = useState("");
+  const [saving, setSaving] = useState(false);
+  const handleSave = async () => {
+    setErr("");
+    if (curPwRef.current !== user.pw) {
+      setErr("현재 비밀번호가 올바르지 않습니다.");
+      return;
+    }
+    const newName = newNameRef.current.trim();
+    if (!newName) {
+      setErr("아이디(이름)를 입력해주세요.");
+      return;
+    }
+    const newPw = newPwRef.current;
+    if (newPw && newPw !== newPwConfirmRef.current) {
+      setErr("새 비밀번호가 서로 일치하지 않습니다.");
+      return;
+    }
+    if (newPw && newPw.length < 4) {
+      setErr("새 비밀번호는 4자 이상이어야 합니다.");
+      return;
+    }
+    // 아이디(이름) 중복 확인 (자기 자신 제외)
+    if (newName !== user.name && db.users.some(u => u.name === newName)) {
+      setErr("이미 사용 중인 아이디입니다.");
+      return;
+    }
+    setSaving(true);
+    try {
+      const updatedUser = {
+        ...user,
+        name: newName,
+        pw: newPw || user.pw
+      };
+      const nu = db.users.map(u => u.id === user.id ? updatedUser : u);
+      await save("users", nu);
+      setDB(d => ({
+        ...d,
+        users: nu
+      }));
+      // 세션에 저장된 사용자 정보도 갱신 (다음 접속 시 새 아이디로 인식되도록)
+      saveKey("dc:session", user.id);
+      alert("계정 정보가 변경되었습니다.");
+      onClose();
+    } catch (e) {
+      console.error("계정 정보 저장 실패:", e);
+      setErr("저장에 실패했어요. 다시 시도해주세요.");
+    } finally {
+      setSaving(false);
+    }
+  };
+  const body = /*#__PURE__*/React.createElement(React.Fragment, null, /*#__PURE__*/React.createElement("div", {
+    style: {
+      fontSize: 12,
+      color: C.text3,
+      marginBottom: 16,
+      lineHeight: 1.6
+    }
+  }, "아이디(로그인 시 사용하는 이름)와 비밀번호를 변경할 수 있어요. 변경하려면 현재 비밀번호를 먼저 입력해주세요."), /*#__PURE__*/React.createElement(Field, {
+    label: "현재 비밀번호",
+    initialValue: "",
+    onCommit: v => curPwRef.current = v,
+    placeholder: "현재 비밀번호 입력",
+    type: "password",
+    autoFocus: true
+  }), /*#__PURE__*/React.createElement(Field, {
+    label: "새 아이디",
+    initialValue: user.name,
+    onCommit: v => newNameRef.current = v,
+    placeholder: "새 아이디(이름)"
+  }), /*#__PURE__*/React.createElement(Field, {
+    label: "새 비밀번호 (선택)",
+    initialValue: "",
+    onCommit: v => newPwRef.current = v,
+    placeholder: "비밀번호를 바꾸지 않으려면 비워두세요",
+    type: "password"
+  }), /*#__PURE__*/React.createElement(Field, {
+    label: "새 비밀번호 확인",
+    initialValue: "",
+    onCommit: v => newPwConfirmRef.current = v,
+    placeholder: "새 비밀번호 다시 입력",
+    type: "password"
+  }), err && /*#__PURE__*/React.createElement("div", {
+    style: {
+      fontSize: 12,
+      color: C.red,
+      marginBottom: 12,
+      fontWeight: 600
+    }
+  }, err), /*#__PURE__*/React.createElement("div", {
+    style: {
+      display: "flex",
+      gap: 8,
+      justifyContent: "flex-end"
+    }
+  }, /*#__PURE__*/React.createElement(Btn, {
+    onClick: onClose,
+    variant: "secondary"
+  }, "취소"), /*#__PURE__*/React.createElement(Btn, {
+    onClick: handleSave,
+    disabled: saving
+  }, saving ? "저장 중..." : "저장")));
+  return isMobile ? /*#__PURE__*/React.createElement(Sheet, {
+    title: "계정 설정",
+    onClose: onClose
+  }, body) : /*#__PURE__*/React.createElement(Modal, {
+    title: "계정 설정",
+    onClose: onClose,
+    width: 420
+  }, body);
+});
 function ProfileScreen({
   db,
   setDB,
@@ -12539,6 +12663,7 @@ function ProfileScreen({
   const [showJoin, setShowJoin] = useState(false);
   const [joinErr, setJoinErr] = useState("");
   const [joining, setJoining] = useState(false);
+  const [showAccountEdit, setShowAccountEdit] = useState(false);
   const myLink = db.links.find(l => l.studentId === user.id && l.status === "active");
   const myTeacher = myLink ? db.users.find(u => u.id === myLink.teacherId) : null;
   const handleJoin = async code => {
@@ -12624,7 +12749,11 @@ function ProfileScreen({
   }, /*#__PURE__*/React.createElement(Av, {
     name: user.name,
     size: 58
-  }), /*#__PURE__*/React.createElement("div", null, /*#__PURE__*/React.createElement("h2", {
+  }), /*#__PURE__*/React.createElement("div", {
+    style: {
+      flex: 1
+    }
+  }, /*#__PURE__*/React.createElement("h2", {
     style: {
       margin: "0 0 4px",
       fontSize: 22,
@@ -12643,7 +12772,21 @@ function ProfileScreen({
       color: C.text3,
       marginTop: 3
     }
-  }, "선생님: ", myTeacher.name)))), user.role === "student" && /*#__PURE__*/React.createElement(Card, {
+  }, "선생님: ", myTeacher.name)), /*#__PURE__*/React.createElement("button", {
+    onClick: () => setShowAccountEdit(true),
+    style: {
+      padding: "8px 14px",
+      borderRadius: 10,
+      border: `1px solid ${C.border}`,
+      background: "none",
+      cursor: "pointer",
+      fontFamily: "inherit",
+      fontSize: 12,
+      fontWeight: 700,
+      color: C.text3,
+      flexShrink: 0
+    }
+  }, "⚙️ 계정 설정"))), user.role === "student" && /*#__PURE__*/React.createElement(Card, {
     style: {
       padding: "18px 20px"
     }
@@ -12937,7 +13080,13 @@ function ProfileScreen({
     },
     err: joinErr,
     joining: joining
-  }))));
+  }))), showAccountEdit && /*#__PURE__*/React.createElement(AccountEditModal, {
+    user: user,
+    db: db,
+    setDB: setDB,
+    onClose: () => setShowAccountEdit(false),
+    isMobile: isMobile
+  }));
 }
 
 /* ================================================================
