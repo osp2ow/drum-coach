@@ -7338,7 +7338,8 @@ const ExamQuestionEditModal = memo(({
       title: titleRef.current.trim(),
       genre: genreRef.current.trim(),
       mode,
-      bpm: mode === "metronome" ? +bpmRef.current || 80 : null,
+      bpm: mode !== "mr" ? +bpmRef.current || 80 : null,
+      // 메트로놈/무반주는 카운트인용 BPM 사용
       duration: +durationRef.current || 30,
       countInBeats: +countInRef.current || 4,
       mrUrl: mode === "mr" ? mrUrl : null,
@@ -7402,8 +7403,22 @@ const ExamQuestionEditModal = memo(({
       background: mode === "mr" ? C.accent : C.card,
       color: mode === "mr" ? "#fff" : C.text3
     }
-  }, "🎧 MR 재생"))), mode === "metronome" && /*#__PURE__*/React.createElement(Field, {
-    label: "BPM",
+  }, "🎧 MR 재생"), /*#__PURE__*/React.createElement("button", {
+    onClick: () => setMode("none"),
+    style: {
+      flex: 1,
+      padding: "10px 0",
+      borderRadius: 10,
+      border: "none",
+      cursor: "pointer",
+      fontFamily: "inherit",
+      fontSize: 13,
+      fontWeight: 700,
+      background: mode === "none" ? C.accent : C.card,
+      color: mode === "none" ? "#fff" : C.text3
+    }
+  }, "🤫 무반주"))), (mode === "metronome" || mode === "none") && /*#__PURE__*/React.createElement(Field, {
+    label: mode === "none" ? "카운트인 BPM (참고용)" : "BPM",
     initialValue: String(item.bpm || 80),
     onCommit: v => bpmRef.current = v,
     placeholder: "80"
@@ -7537,7 +7552,7 @@ function ExamPracticeScreen({
     setPhase("countIn");
     const ctx = getCtx();
     const countBeats = question.countInBeats || 4;
-    const countBpm = question.mode === "metronome" ? question.bpm || 80 : 80;
+    const countBpm = question.bpm || 80; // 모든 모드 공통: 카운트인은 설정된(또는 기본) BPM 사용
     const playBpm = question.bpm || 80;
     const dur = question.duration || 30;
     beatCountRef.current = 0;
@@ -7703,7 +7718,7 @@ function ExamPracticeScreen({
     style: {
       fontSize: 38
     }
-  }, question.mode === "mr" ? "🎧" : "🥁")), /*#__PURE__*/React.createElement("div", {
+  }, question.mode === "mr" ? "🎧" : question.mode === "none" ? "🤫" : "🥁")), /*#__PURE__*/React.createElement("div", {
     style: {
       display: "flex",
       gap: 10,
@@ -7746,7 +7761,27 @@ function ExamPracticeScreen({
       textOverflow: "ellipsis",
       whiteSpace: "nowrap"
     }
-  }, "🎵 ", question.mrName)), /*#__PURE__*/React.createElement("div", {
+  }, "🎵 ", question.mrName)), question.mode === "none" && /*#__PURE__*/React.createElement("div", {
+    style: {
+      background: C.surface,
+      borderRadius: 12,
+      padding: "10px 18px"
+    }
+  }, /*#__PURE__*/React.createElement("div", {
+    style: {
+      fontSize: 22,
+      fontWeight: 900,
+      color: C.text3,
+      fontFamily: "monospace"
+    }
+  }, question.bpm), /*#__PURE__*/React.createElement("div", {
+    style: {
+      fontSize: 10,
+      color: C.text3,
+      fontWeight: 700,
+      marginTop: 1
+    }
+  }, "카운트인만")), /*#__PURE__*/React.createElement("div", {
     style: {
       background: C.surface,
       borderRadius: 12,
@@ -8116,6 +8151,7 @@ function ExamListScreen({
 }) {
   const [questions, setQuestions] = useState(null);
   const [editing, setEditing] = useState(null);
+  const [modeTab, setModeTab] = useState("metronome"); // metronome | mr | none
   const isTeacher = user?.role === "teacher";
   useEffect(() => {
     loadExamQuestions().then(setQuestions);
@@ -8125,7 +8161,7 @@ function ExamListScreen({
       id: uid(),
       title: "",
       genre: "",
-      mode: "metronome",
+      mode: modeTab,
       bpm: 80,
       duration: 30,
       countInBeats: 4,
@@ -8144,6 +8180,9 @@ function ExamListScreen({
     setQuestions(prev => prev.filter(x => x.id !== q.id));
     await deleteExamQuestion(q);
   };
+  const modeTabs = [["metronome", "🥁 메트로놈"], ["mr", "🎧 MR"], ["none", "🤫 무반주"]];
+  const filtered = questions ? questions.filter(q => (q.mode || "metronome") === modeTab) : null;
+  const modeIcon = m => m === "mr" ? "🎧" : m === "none" ? "🤫" : "🥁";
   return /*#__PURE__*/React.createElement("div", {
     style: {
       flex: 1,
@@ -8157,9 +8196,7 @@ function ExamListScreen({
     isMobile: isMobile
   }), /*#__PURE__*/React.createElement("div", {
     style: {
-      flex: 1,
-      overflowY: "auto",
-      padding: isMobile ? "16px" : "20px 28px"
+      padding: isMobile ? "16px 16px 0" : "20px 28px 0"
     }
   }, questions && questions.length > 0 && /*#__PURE__*/React.createElement("button", {
     onClick: () => onStartExam(questions),
@@ -8174,33 +8211,60 @@ function ExamListScreen({
       fontFamily: "inherit",
       fontSize: 15,
       fontWeight: 800,
-      marginBottom: 20,
+      marginBottom: 16,
       display: "flex",
       alignItems: "center",
       justifyContent: "center",
       gap: 8
     }
-  }, "🎲 랜덤 모의고사 시작 (", Math.min(5, questions.length), "문제)"), questions === null && /*#__PURE__*/React.createElement("div", {
+  }, "🎲 랜덤 모의고사 시작 (", Math.min(5, questions.length), "문제)"), /*#__PURE__*/React.createElement("div", {
+    style: {
+      display: "flex",
+      gap: 6,
+      marginBottom: 16
+    }
+  }, modeTabs.map(([m, l]) => /*#__PURE__*/React.createElement("button", {
+    key: m,
+    onClick: () => setModeTab(m),
+    style: {
+      flex: 1,
+      padding: "9px 0",
+      borderRadius: 10,
+      border: "none",
+      cursor: "pointer",
+      fontFamily: "inherit",
+      fontSize: 12,
+      fontWeight: 700,
+      background: modeTab === m ? C.accent : C.card,
+      color: modeTab === m ? "#fff" : C.text3
+    }
+  }, l)))), /*#__PURE__*/React.createElement("div", {
+    style: {
+      flex: 1,
+      overflowY: "auto",
+      padding: isMobile ? "0 16px 16px" : "0 28px 20px"
+    }
+  }, questions === null && /*#__PURE__*/React.createElement("div", {
     style: {
       textAlign: "center",
       padding: "30px 0",
       color: C.text3,
       fontSize: 13
     }
-  }, "불러오는 중..."), questions && questions.length === 0 && /*#__PURE__*/React.createElement("div", {
+  }, "불러오는 중..."), filtered && filtered.length === 0 && /*#__PURE__*/React.createElement("div", {
     style: {
       textAlign: "center",
       padding: "30px 0",
       color: C.text4,
       fontSize: 13
     }
-  }, "등록된 문제가 없어요"), questions && questions.length > 0 && /*#__PURE__*/React.createElement("div", {
+  }, "이 방식으로 등록된 문제가 없어요"), filtered && filtered.length > 0 && /*#__PURE__*/React.createElement("div", {
     style: {
       display: "flex",
       flexDirection: "column",
       gap: 8
     }
-  }, questions.map(q => /*#__PURE__*/React.createElement("div", {
+  }, filtered.map(q => /*#__PURE__*/React.createElement("div", {
     key: q.id,
     onClick: () => onPracticeQuestion(q),
     style: {
@@ -8225,7 +8289,7 @@ function ExamListScreen({
       justifyContent: "center",
       fontSize: 17
     }
-  }, q.mode === "mr" ? "🎧" : "🥁"), /*#__PURE__*/React.createElement("div", {
+  }, modeIcon(q.mode)), /*#__PURE__*/React.createElement("div", {
     style: {
       flex: 1,
       minWidth: 0
@@ -8248,7 +8312,7 @@ function ExamListScreen({
       fontSize: 11,
       color: C.text3
     }
-  }, q.genre), q.mode === "metronome" && /*#__PURE__*/React.createElement("span", {
+  }, q.genre), q.mode !== "mr" && q.bpm && /*#__PURE__*/React.createElement("span", {
     style: {
       fontSize: 11,
       color: C.accent
@@ -8310,7 +8374,7 @@ function ExamListScreen({
       color: C.text3,
       marginTop: 12
     }
-  }, "+ 문제 추가")), editing && /*#__PURE__*/React.createElement(ExamQuestionEditModal, {
+  }, "+ ", modeTabs.find(([m]) => m === modeTab)[1], " 문제 추가")), editing && /*#__PURE__*/React.createElement(ExamQuestionEditModal, {
     item: editing,
     onSave: handleSave,
     onCancel: () => setEditing(null),
@@ -8352,7 +8416,9 @@ function PracticeToolsScreen({
       onClose: () => setExamQuestions(null)
     });
   }
-  const subTabs = isTeacher ? [["speed", "🎚️ 속도조절"], ["metronome", "🥁 메트로놈"], ["exam", "🎤 입시모의고사"]] : [["speed", "🎚️ 속도조절"], ["metronome", "🥁 메트로놈"]];
+
+  // 메트로놈 서브탭은 우선 숨김 처리 (필요시 아래 배열에 ["metronome","🥁 메트로놈"] 다시 추가하면 복원됨)
+  const subTabs = isTeacher ? [["speed", "🎚️ 속도조절"], ["exam", "🎤 입시모의고사"]] : [["speed", "🎚️ 속도조절"]];
   return /*#__PURE__*/React.createElement("div", {
     style: {
       flex: 1,
@@ -8362,7 +8428,7 @@ function PracticeToolsScreen({
     }
   }, /*#__PURE__*/React.createElement(PageHeader, {
     title: "연습 도구",
-    sub: isTeacher ? "음원 속도조절 · 메트로놈 · 입시 모의고사" : "음원 속도조절 · 메트로놈",
+    sub: isTeacher ? "음원 속도조절 · 입시 모의고사" : "음원 속도조절",
     isMobile: isMobile
   }), /*#__PURE__*/React.createElement("div", {
     style: {
