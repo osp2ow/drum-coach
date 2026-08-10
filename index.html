@@ -7417,7 +7417,7 @@ const ExamQuestionEditModal = memo(({
       background: mode === "none" ? C.accent : C.card,
       color: mode === "none" ? "#fff" : C.text3
     }
-  }, "🤫 무반주"))), (mode === "metronome" || mode === "none") && /*#__PURE__*/React.createElement(Field, {
+  }, "무반주"))), (mode === "metronome" || mode === "none") && /*#__PURE__*/React.createElement(Field, {
     label: mode === "none" ? "카운트인 BPM (참고용)" : "BPM",
     initialValue: String(item.bpm || 80),
     onCommit: v => bpmRef.current = v,
@@ -7718,7 +7718,7 @@ function ExamPracticeScreen({
     style: {
       fontSize: 38
     }
-  }, question.mode === "mr" ? "🎧" : question.mode === "none" ? "🤫" : "🥁")), /*#__PURE__*/React.createElement("div", {
+  }, question.mode === "mr" ? "🎧" : question.mode === "none" ? "🎼" : "🥁")), /*#__PURE__*/React.createElement("div", {
     style: {
       display: "flex",
       gap: 10,
@@ -8180,9 +8180,9 @@ function ExamListScreen({
     setQuestions(prev => prev.filter(x => x.id !== q.id));
     await deleteExamQuestion(q);
   };
-  const modeTabs = [["metronome", "🥁 메트로놈"], ["mr", "🎧 MR"], ["none", "🤫 무반주"]];
+  const modeTabs = [["metronome", "🥁 메트로놈"], ["mr", "🎧 MR"], ["none", "무반주"]];
   const filtered = questions ? questions.filter(q => (q.mode || "metronome") === modeTab) : null;
-  const modeIcon = m => m === "mr" ? "🎧" : m === "none" ? "🤫" : "🥁";
+  const modeIcon = m => m === "mr" ? "🎧" : m === "none" ? "🎼" : "🥁";
   return /*#__PURE__*/React.createElement("div", {
     style: {
       flex: 1,
