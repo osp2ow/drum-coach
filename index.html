@@ -1467,23 +1467,87 @@ async function deleteAudioTrack(track) {
 }
 
 /* ── 입시 모의고사 문제 카드 (전체 공유, 선생님 편집) ─────── */
-/* ── 초견용 랜덤 리듬 생성 (스네어 단선 리듬보, 4/4박자 기준) ─── */
-// 각 유닛은 정확히 1박을 차지: quarter(4분음표) / eighthPair(8분음표 2개) /
-// sixteenth(16분음표 4개) / rest_quarter(4분쉼표)
-const RHYTHM_POOLS = {
-  easy: ["quarter", "quarter", "quarter", "eighthPair", "rest_quarter"],
-  medium: ["quarter", "eighthPair", "eighthPair", "sixteenth", "rest_quarter"],
-  hard: ["eighthPair", "sixteenth", "sixteenth", "quarter", "rest_quarter", "eighthPair"]
-};
+/* ── 초견용 랜덤 리듬 생성 (스네어 단선 리듬보, 4/4박자, 16마디 고정) ─── */
+// 각 유닛: {type, beats, positions?} — beats는 1 또는 2(2박3연음만)
+const SIXTEENTH_PATTERNS = ["1", "2", "3", "4", "12", "23", "34", "13", "24", "14", "123", "234", "134", "124", "1234"];
+function pickSixteenthPattern(fullOnly) {
+  const p = fullOnly ? "1234" : SIXTEENTH_PATTERNS[Math.floor(Math.random() * SIXTEENTH_PATTERNS.length)];
+  return {
+    type: "sixteenth",
+    beats: 1,
+    positions: [1, 2, 3, 4].map(n => p.includes(String(n)))
+  };
+}
+function unitPool(difficulty) {
+  const base = [{
+    type: "quarter",
+    beats: 1
+  }, {
+    type: "quarterRest",
+    beats: 1
+  }, {
+    type: "eighthPair",
+    beats: 1
+  }];
+  if (difficulty === "easy") return [...base, {
+    type: "quarter",
+    beats: 1
+  }];
+  const medium = [...base, {
+    type: "eighthNoteRest",
+    beats: 1
+  }, {
+    type: "eighthRestNote",
+    beats: 1
+  }, "sixteenthFull", {
+    type: "triplet",
+    beats: 1
+  }];
+  if (difficulty === "medium") return medium;
+  // hard: 모든 조합 포함 (16분음표 15종 전부, 점음표, 2박3연음 포함)
+  return [...medium, "sixteenthRandom", "sixteenthRandom", "sixteenthRandom",
+  // 등장 비중을 높임
+  {
+    type: "dottedEighthSixteenth",
+    beats: 1
+  }, {
+    type: "dottedEighthRestSixteenth",
+    beats: 1
+  }, {
+    type: "dottedEighthSixteenthRest",
+    beats: 1
+  }, {
+    type: "triplet2beat",
+    beats: 2
+  }];
+}
+function pickUnit(difficulty, remaining) {
+  const pool = unitPool(difficulty).filter(u => {
+    const beats = u === "sixteenthFull" || u === "sixteenthRandom" ? 1 : u.beats;
+    return beats <= remaining;
+  });
+  if (pool.length === 0) return null;
+  const pick = pool[Math.floor(Math.random() * pool.length)];
+  if (pick === "sixteenthFull") return pickSixteenthPattern(true);
+  if (pick === "sixteenthRandom") return pickSixteenthPattern(false);
+  return pick;
+}
 function generateRhythmMeasure(difficulty) {
-  const pool = RHYTHM_POOLS[difficulty] || RHYTHM_POOLS.easy;
-  return Array.from({
-    length: 4
-  }, () => pool[Math.floor(Math.random() * pool.length)]);
+  const units = [];
+  let beatsUsed = 0,
+    guard = 0;
+  while (beatsUsed < 4 && guard < 20) {
+    guard++;
+    const unit = pickUnit(difficulty, 4 - beatsUsed);
+    if (!unit) break;
+    units.push(unit);
+    beatsUsed += unit.beats;
+  }
+  return units;
 }
 function generateRhythm(measures, difficulty) {
   return Array.from({
-    length: Math.max(1, measures || 2)
+    length: measures || 16
   }, () => generateRhythmMeasure(difficulty));
 }
 async function loadExamQuestions() {
@@ -7312,7 +7376,6 @@ const ExamQuestionEditModal = memo(({
   const bpmRef = useRef(item.bpm || 80);
   const durationRef = useRef(item.duration || 30);
   const countInRef = useRef(item.countInBeats || 4);
-  const measuresRef = useRef(item.measures || 2);
   const [difficulty, setDifficulty] = useState(item.difficulty || "easy");
   const fileInputRef = useRef(null);
   const [mrName, setMrName] = useState(item.mrName || "");
@@ -7366,7 +7429,8 @@ const ExamQuestionEditModal = memo(({
       mrUrl: mode === "mr" ? mrUrl : null,
       mrName: mode === "mr" ? mrName : null,
       mrStoragePath: mode === "mr" ? mrStoragePath : null,
-      measures: mode === "sightread" ? +measuresRef.current || 2 : null,
+      measures: mode === "sightread" ? 16 : null,
+      // 초견은 항상 16마디 고정
       difficulty: mode === "sightread" ? difficulty : null
     });
     setSaving(false);
@@ -7459,12 +7523,7 @@ const ExamQuestionEditModal = memo(({
     initialValue: String(item.bpm || 80),
     onCommit: v => bpmRef.current = v,
     placeholder: "80"
-  }), mode === "sightread" && /*#__PURE__*/React.createElement(React.Fragment, null, /*#__PURE__*/React.createElement(Field, {
-    label: "마디 수",
-    initialValue: String(item.measures || 2),
-    onCommit: v => measuresRef.current = v,
-    placeholder: "2"
-  }), /*#__PURE__*/React.createElement("div", {
+  }), mode === "sightread" && /*#__PURE__*/React.createElement(React.Fragment, null, /*#__PURE__*/React.createElement("div", {
     style: {
       marginBottom: 14
     }
@@ -7587,92 +7646,235 @@ const ExamQuestionEditModal = memo(({
 /* ── 문제 연습 화면 (개별 연습 & 모의고사 공용) ───────────── */
 
 /* ── 리듬보 SVG 렌더러 (스네어 초견용 단선 리듬 표기) ─────── */
+
+/* ── 리듬보 SVG 렌더러 (스네어 초견용, 4마디씩 4줄 배치) ──── */
 const RhythmNotationSVG = memo(({
   measures
 }) => {
-  const unitW = 64,
-    measureGap = 26,
-    staffY = 52,
-    padL = 16;
-  const totalUnits = measures.reduce((a, m) => a + m.length, 0);
-  const width = Math.max(280, padL + totalUnits * unitW + measures.length * measureGap);
+  const rows = [];
+  for (let i = 0; i < measures.length; i += 4) rows.push(measures.slice(i, i + 4));
+  return /*#__PURE__*/React.createElement("div", {
+    style: {
+      display: "flex",
+      flexDirection: "column",
+      gap: 10,
+      width: "100%"
+    }
+  }, rows.map((rowMeasures, ri) => /*#__PURE__*/React.createElement(RhythmRow, {
+    key: ri,
+    measures: rowMeasures
+  })));
+});
+const RhythmRow = memo(({
+  measures
+}) => {
+  const unitW = 42,
+    measureGap = 18,
+    staffY = 40,
+    padL = 10;
+  const measureW = unitW * 4;
+  const width = padL + measures.length * (measureW + measureGap);
+  const H = 76;
   const renderNote = (cx, key) => /*#__PURE__*/React.createElement("g", {
     key: key
   }, /*#__PURE__*/React.createElement("circle", {
     cx: cx,
     cy: staffY,
-    r: "6.5",
+    r: "5.5",
     fill: C.text
   }), /*#__PURE__*/React.createElement("line", {
-    x1: cx + 6,
+    x1: cx + 5,
     y1: staffY - 2,
-    x2: cx + 6,
-    y2: staffY - 34,
+    x2: cx + 5,
+    y2: staffY - 28,
     stroke: C.text,
-    strokeWidth: "2.2"
+    strokeWidth: "2"
   }));
+  const renderFlag = (stemX, count, key) => /*#__PURE__*/React.createElement("g", {
+    key: key
+  }, Array.from({
+    length: count
+  }).map((_, i) => /*#__PURE__*/React.createElement("path", {
+    key: i,
+    d: `M ${stemX},${staffY - 28 + i * 6} q 8,3 6,11`,
+    stroke: C.text,
+    strokeWidth: "2",
+    fill: "none",
+    strokeLinecap: "round"
+  })));
   const renderBeam = (x1, x2, key, double) => /*#__PURE__*/React.createElement("g", {
     key: key
   }, /*#__PURE__*/React.createElement("rect", {
     x: x1,
-    y: staffY - 36,
+    y: staffY - 30,
     width: x2 - x1,
-    height: "4.5",
+    height: "3.6",
     fill: C.text
   }), double && /*#__PURE__*/React.createElement("rect", {
     x: x1,
-    y: staffY - 29,
+    y: staffY - 24,
     width: x2 - x1,
-    height: "4.5",
+    height: "3.6",
     fill: C.text
   }));
-  const renderRest = (cx, key) => /*#__PURE__*/React.createElement("g", {
-    key: key
-  }, /*#__PURE__*/React.createElement("rect", {
-    x: cx - 5,
-    y: staffY - 11,
-    width: "10",
-    height: "16",
-    rx: "3",
-    fill: C.text3
-  }));
+  const renderDot = (cx, key) => /*#__PURE__*/React.createElement("circle", {
+    key: key,
+    cx: cx + 9,
+    cy: staffY - 2,
+    r: "1.8",
+    fill: C.text
+  });
+  const renderRest = (cx, dur, key) => {
+    if (dur === "quarter") return /*#__PURE__*/React.createElement("rect", {
+      key: key,
+      x: cx - 4.5,
+      y: staffY - 10,
+      width: "9",
+      height: "15",
+      rx: "3",
+      fill: C.text3
+    });
+    if (dur === "eighth") return /*#__PURE__*/React.createElement("g", {
+      key: key
+    }, /*#__PURE__*/React.createElement("circle", {
+      cx: cx - 2,
+      cy: staffY - 5,
+      r: "2.6",
+      fill: C.text3
+    }), /*#__PURE__*/React.createElement("path", {
+      d: `M ${cx - 2},${staffY - 5} q 6,3 -1,10`,
+      stroke: C.text3,
+      strokeWidth: "1.8",
+      fill: "none",
+      strokeLinecap: "round"
+    }));
+    if (dur === "sixteenth") return /*#__PURE__*/React.createElement("g", {
+      key: key
+    }, /*#__PURE__*/React.createElement("circle", {
+      cx: cx - 2,
+      cy: staffY - 8,
+      r: "2.3",
+      fill: C.text3
+    }), /*#__PURE__*/React.createElement("circle", {
+      cx: cx - 2,
+      cy: staffY - 1,
+      r: "2.3",
+      fill: C.text3
+    }), /*#__PURE__*/React.createElement("path", {
+      d: `M ${cx - 2},${staffY - 8} q 5,2 -1,8`,
+      stroke: C.text3,
+      strokeWidth: "1.6",
+      fill: "none",
+      strokeLinecap: "round"
+    }), /*#__PURE__*/React.createElement("path", {
+      d: `M ${cx - 2},${staffY - 1} q 5,2 -1,8`,
+      stroke: C.text3,
+      strokeWidth: "1.6",
+      fill: "none",
+      strokeLinecap: "round"
+    }));
+    return null;
+  };
   const renderUnit = (unit, x, key) => {
-    const c = x + unitW / 2;
-    if (unit === "quarter") return renderNote(c, key);
-    if (unit === "rest_quarter") return renderRest(c, key);
-    if (unit === "eighthPair") {
-      const gap = 16;
-      const n1 = c - gap / 2,
+    const w = unit.beats === 2 ? unitW * 2 : unitW;
+    const c = x + w / 2;
+    if (unit.type === "quarter") return renderNote(c, key);
+    if (unit.type === "quarterRest") return renderRest(c, "quarter", key);
+    if (unit.type === "eighthPair") {
+      const gap = w * 0.32,
+        n1 = c - gap / 2,
         n2 = c + gap / 2;
       return /*#__PURE__*/React.createElement("g", {
         key: key
-      }, renderNote(n1, key + "a"), renderNote(n2, key + "b"), renderBeam(n1 + 6, n2 + 6, key + "beam", false));
+      }, renderNote(n1, key + "a"), renderNote(n2, key + "b"), renderBeam(n1 + 5, n2 + 5, key + "bm", false));
     }
-    if (unit === "sixteenth") {
-      const gap = 12;
-      const start = c - gap * 1.5;
-      const positions = [0, 1, 2, 3].map(i => start + i * gap);
+    if (unit.type === "eighthNoteRest") {
+      const nx = x + w * 0.25,
+        rx = x + w * 0.72;
       return /*#__PURE__*/React.createElement("g", {
         key: key
-      }, positions.map((p, i) => renderNote(p, key + "n" + i)), renderBeam(positions[0] + 6, positions[3] + 6, key + "beam", true));
+      }, renderNote(nx, key + "n"), renderFlag(nx + 5, 1, key + "f"), renderRest(rx, "eighth", key + "r"));
+    }
+    if (unit.type === "eighthRestNote") {
+      const rx = x + w * 0.28,
+        nx = x + w * 0.72;
+      return /*#__PURE__*/React.createElement("g", {
+        key: key
+      }, renderRest(rx, "eighth", key + "r"), renderNote(nx, key + "n"), renderFlag(nx + 5, 1, key + "f"));
+    }
+    if (unit.type === "sixteenth") {
+      const cellW = w / 4;
+      const xs = [0, 1, 2, 3].map(i => x + cellW * (i + 0.5));
+      const els = [];
+      unit.positions.forEach((hit, i) => {
+        els.push(hit ? renderNote(xs[i], key + "n" + i) : renderRest(xs[i], "sixteenth", key + "r" + i));
+      });
+      let i = 0;
+      while (i < 4) {
+        if (unit.positions[i]) {
+          let j = i;
+          while (j + 1 < 4 && unit.positions[j + 1]) j++;
+          if (j > i) els.push(renderBeam(xs[i] + 5, xs[j] + 5, key + "bm" + i, true));else els.push(renderFlag(xs[i] + 5, 2, key + "fl" + i));
+          i = j + 1;
+        } else i++;
+      }
+      return /*#__PURE__*/React.createElement("g", {
+        key: key
+      }, els);
+    }
+    if (unit.type === "dottedEighthSixteenth") {
+      const n1 = x + w * 0.26,
+        n2 = x + w * 0.82;
+      return /*#__PURE__*/React.createElement("g", {
+        key: key
+      }, renderNote(n1, key + "a"), renderFlag(n1 + 5, 1, key + "f1"), renderDot(n1, key + "d"), renderNote(n2, key + "b"), renderFlag(n2 + 5, 1, key + "f2"));
+    }
+    if (unit.type === "dottedEighthRestSixteenth") {
+      const r1 = x + w * 0.26,
+        n2 = x + w * 0.82;
+      return /*#__PURE__*/React.createElement("g", {
+        key: key
+      }, renderRest(r1, "eighth", key + "r"), renderDot(r1, key + "d"), renderNote(n2, key + "b"), renderFlag(n2 + 5, 1, key + "f2"));
+    }
+    if (unit.type === "dottedEighthSixteenthRest") {
+      const n1 = x + w * 0.26,
+        r2 = x + w * 0.82;
+      return /*#__PURE__*/React.createElement("g", {
+        key: key
+      }, renderNote(n1, key + "a"), renderFlag(n1 + 5, 1, key + "f1"), renderDot(n1, key + "d"), renderRest(r2, "sixteenth", key + "r"));
+    }
+    if (unit.type === "triplet" || unit.type === "triplet2beat") {
+      const xs = [0, 1, 2].map(i => x + w * (i + 0.5) / 3);
+      return /*#__PURE__*/React.createElement("g", {
+        key: key
+      }, xs.map((p, i) => renderNote(p, key + "n" + i)), renderBeam(xs[0] + 5, xs[2] + 5, key + "bm", false), /*#__PURE__*/React.createElement("text", {
+        x: (xs[0] + xs[2]) / 2 + 5,
+        y: staffY - 33,
+        fontSize: "11",
+        fontWeight: "700",
+        fill: C.text3,
+        textAnchor: "middle"
+      }, "3"));
     }
     return null;
   };
   let x = padL;
   const elements = [];
   measures.forEach((measure, mi) => {
+    let mx = x;
     measure.forEach((unit, ui) => {
-      elements.push(renderUnit(unit, x, `m${mi}u${ui}`));
-      x += unitW;
+      elements.push(renderUnit(unit, mx, `m${mi}u${ui}`));
+      mx += unit.beats === 2 ? unitW * 2 : unitW;
     });
+    x += measureW;
     elements.push(/*#__PURE__*/React.createElement("line", {
       key: `bar${mi}`,
       x1: x + measureGap / 2,
-      y1: staffY - 38,
+      y1: staffY - 32,
       x2: x + measureGap / 2,
-      y2: staffY + 10,
+      y2: staffY + 8,
       stroke: C.text,
-      strokeWidth: mi === measures.length - 1 ? 3 : 2
+      strokeWidth: mi === measures.length - 1 ? 2.6 : 1.8
     }));
     x += measureGap;
   });
@@ -7683,20 +7885,19 @@ const RhythmNotationSVG = memo(({
       WebkitOverflowScrolling: "touch"
     }
   }, /*#__PURE__*/React.createElement("svg", {
-    viewBox: `0 0 ${width} 100`,
+    viewBox: `0 0 ${width} ${H}`,
     width: width,
-    height: "110",
+    height: H,
     style: {
-      display: "block",
-      margin: "0 auto"
+      display: "block"
     }
   }, /*#__PURE__*/React.createElement("line", {
-    x1: padL - 8,
+    x1: padL - 6,
     y1: staffY,
-    x2: width - 8,
+    x2: width - 6,
     y2: staffY,
     stroke: C.border,
-    strokeWidth: "1.5"
+    strokeWidth: "1.2"
   }), elements));
 });
 function ExamPracticeScreen({
@@ -7921,7 +8122,7 @@ function ExamPracticeScreen({
     style: {
       fontSize: 38
     }
-  }, question.mode === "mr" ? "🎧" : question.mode === "none" ? "🎼" : question.mode === "sightread" ? "👁️" : "🥁")), question.mode === "mr" && /*#__PURE__*/React.createElement("div", {
+  }, question.mode === "mr" ? "🎧" : question.mode === "none" ? "🎼" : question.mode === "sightread" ? "📖" : "🥁")), question.mode === "mr" && /*#__PURE__*/React.createElement("div", {
     style: {
       background: C.accentDim,
       borderRadius: 12,
@@ -8438,7 +8639,7 @@ function ExamListScreen({
   };
   const modeTabs = [["metronome", "🥁 메트로놈"], ["mr", "🎧 MR"], ["none", "무반주"], ["sightread", "초견"]];
   const filtered = questions ? questions.filter(q => (q.mode || "metronome") === modeTab) : null;
-  const modeIcon = m => m === "mr" ? "🎧" : m === "none" ? "🎼" : m === "sightread" ? "👁️" : "🥁";
+  const modeIcon = m => m === "mr" ? "🎧" : m === "none" ? "🎼" : m === "sightread" ? "📖" : "🥁";
   return /*#__PURE__*/React.createElement("div", {
     style: {
       flex: 1,
