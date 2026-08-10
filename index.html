@@ -7651,8 +7651,17 @@ const ExamQuestionEditModal = memo(({
 const RhythmNotationSVG = memo(({
   measures
 }) => {
+  // 진짜 폰(좁은 화면)만 2마디씩, 아이패드 등 태블릿은 컴퓨터와 동일하게 4마디씩
+  // (앱 전체의 isMobile 기준(768px)은 아이패드도 모바일로 묶어버려서 여기선 더 좁은 기준을 직접 사용)
+  const [isNarrow, setIsNarrow] = useState(window.innerWidth < 600);
+  useEffect(() => {
+    const fn = () => setIsNarrow(window.innerWidth < 600);
+    window.addEventListener("resize", fn);
+    return () => window.removeEventListener("resize", fn);
+  }, []);
+  const perRow = isNarrow ? 2 : 4;
   const rows = [];
-  for (let i = 0; i < measures.length; i += 4) rows.push(measures.slice(i, i + 4));
+  for (let i = 0; i < measures.length; i += perRow) rows.push(measures.slice(i, i + perRow));
   return /*#__PURE__*/React.createElement("div", {
     style: {
       display: "flex",
@@ -7908,7 +7917,28 @@ function ExamPracticeScreen({
     clearInterval(uiTimerRef.current);
     if (mrRef.current) mrRef.current.pause();
   };
-  useEffect(() => () => cleanupAll(), []);
+
+  // 초견 모드는 전체화면으로 전환 (주소창 등 브라우저 UI를 가려 화면을 최대한 넓게 확보)
+  const enterFullscreen = () => {
+    const el = document.documentElement;
+    const req = el.requestFullscreen || el.webkitRequestFullscreen || el.mozRequestFullScreen || el.msRequestFullscreen;
+    if (req) req.call(el).catch(() => {});
+  };
+  const exitFullscreen = () => {
+    const exit = document.exitFullscreen || document.webkitExitFullscreen || document.mozCancelFullScreen || document.msExitFullscreen;
+    const isFs = document.fullscreenElement || document.webkitFullscreenElement || document.mozFullScreenElement || document.msFullscreenElement;
+    if (exit && isFs) exit.call(document).catch(() => {});
+  };
+  useEffect(() => () => {
+    cleanupAll();
+    if (question.mode === "sightread") exitFullscreen();
+  }, []);
+
+  // onClose 호출 전 전체화면부터 해제 (초견일 때)
+  const handleClose = () => {
+    if (question.mode === "sightread") exitFullscreen();
+    onClose();
+  };
   const getCtx = () => {
     if (!audioCtxRef.current) audioCtxRef.current = new (window.AudioContext || window.webkitAudioContext)();
     if (audioCtxRef.current.state === "suspended") audioCtxRef.current.resume();
@@ -7931,6 +7961,7 @@ function ExamPracticeScreen({
     if (startedRef.current) return;
     startedRef.current = true;
     unlockSilentAudio(); // 아이폰 무음 모드에서도 소리 나오게
+    if (question.mode === "sightread") enterFullscreen(); // 초견은 전체화면으로 전환해 화면을 최대한 넓게 확보
     setPhase("countIn");
     const ctx = getCtx();
     const countBeats = question.countInBeats || 4;
@@ -8026,7 +8057,7 @@ function ExamPracticeScreen({
     }
   }, /*#__PURE__*/React.createElement(PageHeader, {
     title: question.title,
-    onBack: onClose,
+    onBack: handleClose,
     backLabel: isExam ? "" : "목록",
     isMobile: isMobile
   }), question.mode === "mr" && question.mrUrl && /*#__PURE__*/React.createElement("audio", {
@@ -8435,7 +8466,7 @@ function ExamPracticeScreen({
       gap: 10
     }
   }, /*#__PURE__*/React.createElement("button", {
-    onClick: onClose,
+    onClick: handleClose,
     style: {
       flex: 1,
       padding: "18px 0",
