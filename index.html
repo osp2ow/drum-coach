@@ -1493,18 +1493,19 @@ function unitPool(difficulty) {
     type: "quarter",
     beats: 1
   }];
+  // 주의: "8분음표+8분쉼표"는 타격 시점이 4분음표와 완전히 같아 타악기 리듬에선 의미가 중복되므로 제외
   const medium = [...base, {
-    type: "eighthNoteRest",
-    beats: 1
-  }, {
     type: "eighthRestNote",
     beats: 1
-  }, "sixteenthFull", {
+  },
+  // 뒷박(업비트)을 치는 진짜 다른 리듬이라 포함
+  "sixteenthFull", {
     type: "triplet",
     beats: 1
   }];
   if (difficulty === "medium") return medium;
   // hard: 모든 조합 포함 (16분음표 15종 전부, 점음표, 2박3연음 포함)
+  // "점8분음표+16분쉼표"도 4분음표와 타격 시점이 같아 제외
   return [...medium, "sixteenthRandom", "sixteenthRandom", "sixteenthRandom",
   // 등장 비중을 높임
   {
@@ -1512,9 +1513,6 @@ function unitPool(difficulty) {
     beats: 1
   }, {
     type: "dottedEighthRestSixteenth",
-    beats: 1
-  }, {
-    type: "dottedEighthSixteenthRest",
     beats: 1
   }, {
     type: "triplet2beat",
@@ -7648,6 +7646,8 @@ const ExamQuestionEditModal = memo(({
 /* ── 리듬보 SVG 렌더러 (스네어 초견용 단선 리듬 표기) ─────── */
 
 /* ── 리듬보 SVG 렌더러 (스네어 초견용, 4마디씩 4줄 배치) ──── */
+
+/* ── 리듬보 SVG 렌더러 (스네어 초견용, 4마디씩 4줄, 화면 너비에 맞춰 자동 축소) ──── */
 const RhythmNotationSVG = memo(({
   measures
 }) => {
@@ -7657,7 +7657,7 @@ const RhythmNotationSVG = memo(({
     style: {
       display: "flex",
       flexDirection: "column",
-      gap: 10,
+      gap: 8,
       width: "100%"
     }
   }, rows.map((rowMeasures, ri) => /*#__PURE__*/React.createElement(RhythmRow, {
@@ -7674,21 +7674,21 @@ const RhythmRow = memo(({
     padL = 10;
   const measureW = unitW * 4;
   const width = padL + measures.length * (measureW + measureGap);
-  const H = 76;
+  const H = 72;
   const renderNote = (cx, key) => /*#__PURE__*/React.createElement("g", {
     key: key
   }, /*#__PURE__*/React.createElement("circle", {
     cx: cx,
     cy: staffY,
-    r: "5.5",
+    r: "4.5",
     fill: C.text
   }), /*#__PURE__*/React.createElement("line", {
-    x1: cx + 5,
-    y1: staffY - 2,
-    x2: cx + 5,
-    y2: staffY - 28,
+    x1: cx + 4.3,
+    y1: staffY - 1,
+    x2: cx + 4.3,
+    y2: staffY - 26,
     stroke: C.text,
-    strokeWidth: "2"
+    strokeWidth: "1.5"
   }));
   const renderFlag = (stemX, count, key) => /*#__PURE__*/React.createElement("g", {
     key: key
@@ -7696,9 +7696,9 @@ const RhythmRow = memo(({
     length: count
   }).map((_, i) => /*#__PURE__*/React.createElement("path", {
     key: i,
-    d: `M ${stemX},${staffY - 28 + i * 6} q 8,3 6,11`,
+    d: `M ${stemX},${staffY - 26 + i * 6} q 7,3 5,10`,
     stroke: C.text,
-    strokeWidth: "2",
+    strokeWidth: "1.5",
     fill: "none",
     strokeLinecap: "round"
   })));
@@ -7706,45 +7706,46 @@ const RhythmRow = memo(({
     key: key
   }, /*#__PURE__*/React.createElement("rect", {
     x: x1,
-    y: staffY - 30,
+    y: staffY - 28,
     width: x2 - x1,
-    height: "3.6",
+    height: "2.8",
     fill: C.text
   }), double && /*#__PURE__*/React.createElement("rect", {
     x: x1,
-    y: staffY - 24,
+    y: staffY - 23,
     width: x2 - x1,
-    height: "3.6",
+    height: "2.8",
     fill: C.text
   }));
   const renderDot = (cx, key) => /*#__PURE__*/React.createElement("circle", {
     key: key,
-    cx: cx + 9,
-    cy: staffY - 2,
-    r: "1.8",
+    cx: cx + 7.5,
+    cy: staffY - 1,
+    r: "1.5",
     fill: C.text
   });
+
+  // 4분쉼표: 표준 지그재그 형태를 단순화한 모양
+  const renderQuarterRest = (cx, key) => /*#__PURE__*/React.createElement("g", {
+    key: key,
+    transform: `translate(${cx},${staffY - 9})`
+  }, /*#__PURE__*/React.createElement("path", {
+    d: "M -1,-9 C 3,-6 -3,-3 2,0 C -2,2 3,5 0,9 L -3,6 C 0,3 -4,1 -1,-1 C 2,-3 -4,-5 -1,-9 Z",
+    fill: C.text3
+  }));
   const renderRest = (cx, dur, key) => {
-    if (dur === "quarter") return /*#__PURE__*/React.createElement("rect", {
-      key: key,
-      x: cx - 4.5,
-      y: staffY - 10,
-      width: "9",
-      height: "15",
-      rx: "3",
-      fill: C.text3
-    });
+    if (dur === "quarter") return renderQuarterRest(cx, key);
     if (dur === "eighth") return /*#__PURE__*/React.createElement("g", {
       key: key
     }, /*#__PURE__*/React.createElement("circle", {
       cx: cx - 2,
-      cy: staffY - 5,
-      r: "2.6",
+      cy: staffY - 4,
+      r: "2.2",
       fill: C.text3
     }), /*#__PURE__*/React.createElement("path", {
-      d: `M ${cx - 2},${staffY - 5} q 6,3 -1,10`,
+      d: `M ${cx - 2},${staffY - 4} q 5,3 -1,9`,
       stroke: C.text3,
-      strokeWidth: "1.8",
+      strokeWidth: "1.5",
       fill: "none",
       strokeLinecap: "round"
     }));
@@ -7752,24 +7753,24 @@ const RhythmRow = memo(({
       key: key
     }, /*#__PURE__*/React.createElement("circle", {
       cx: cx - 2,
-      cy: staffY - 8,
-      r: "2.3",
+      cy: staffY - 7,
+      r: "2",
       fill: C.text3
     }), /*#__PURE__*/React.createElement("circle", {
       cx: cx - 2,
       cy: staffY - 1,
-      r: "2.3",
+      r: "2",
       fill: C.text3
     }), /*#__PURE__*/React.createElement("path", {
-      d: `M ${cx - 2},${staffY - 8} q 5,2 -1,8`,
+      d: `M ${cx - 2},${staffY - 7} q 4,2 -1,7`,
       stroke: C.text3,
-      strokeWidth: "1.6",
+      strokeWidth: "1.3",
       fill: "none",
       strokeLinecap: "round"
     }), /*#__PURE__*/React.createElement("path", {
-      d: `M ${cx - 2},${staffY - 1} q 5,2 -1,8`,
+      d: `M ${cx - 2},${staffY - 1} q 4,2 -1,7`,
       stroke: C.text3,
-      strokeWidth: "1.6",
+      strokeWidth: "1.3",
       fill: "none",
       strokeLinecap: "round"
     }));
@@ -7786,21 +7787,15 @@ const RhythmRow = memo(({
         n2 = c + gap / 2;
       return /*#__PURE__*/React.createElement("g", {
         key: key
-      }, renderNote(n1, key + "a"), renderNote(n2, key + "b"), renderBeam(n1 + 5, n2 + 5, key + "bm", false));
+      }, renderNote(n1, key + "a"), renderNote(n2, key + "b"), renderBeam(n1 + 4.3, n2 + 4.3, key + "bm", false));
     }
-    if (unit.type === "eighthNoteRest") {
-      const nx = x + w * 0.25,
-        rx = x + w * 0.72;
-      return /*#__PURE__*/React.createElement("g", {
-        key: key
-      }, renderNote(nx, key + "n"), renderFlag(nx + 5, 1, key + "f"), renderRest(rx, "eighth", key + "r"));
-    }
+    // 8분음표+8분쉼표(=4분음표와 동일한 타격)는 타악기 리듬에선 의미 중복이라 제외
     if (unit.type === "eighthRestNote") {
       const rx = x + w * 0.28,
         nx = x + w * 0.72;
       return /*#__PURE__*/React.createElement("g", {
         key: key
-      }, renderRest(rx, "eighth", key + "r"), renderNote(nx, key + "n"), renderFlag(nx + 5, 1, key + "f"));
+      }, renderRest(rx, "eighth", key + "r"), renderNote(nx, key + "n"), renderFlag(nx + 4.3, 1, key + "f"));
     }
     if (unit.type === "sixteenth") {
       const cellW = w / 4;
@@ -7814,7 +7809,7 @@ const RhythmRow = memo(({
         if (unit.positions[i]) {
           let j = i;
           while (j + 1 < 4 && unit.positions[j + 1]) j++;
-          if (j > i) els.push(renderBeam(xs[i] + 5, xs[j] + 5, key + "bm" + i, true));else els.push(renderFlag(xs[i] + 5, 2, key + "fl" + i));
+          if (j > i) els.push(renderBeam(xs[i] + 4.3, xs[j] + 4.3, key + "bm" + i, true));else els.push(renderFlag(xs[i] + 4.3, 2, key + "fl" + i));
           i = j + 1;
         } else i++;
       }
@@ -7827,30 +7822,24 @@ const RhythmRow = memo(({
         n2 = x + w * 0.82;
       return /*#__PURE__*/React.createElement("g", {
         key: key
-      }, renderNote(n1, key + "a"), renderFlag(n1 + 5, 1, key + "f1"), renderDot(n1, key + "d"), renderNote(n2, key + "b"), renderFlag(n2 + 5, 1, key + "f2"));
+      }, renderNote(n1, key + "a"), renderFlag(n1 + 4.3, 1, key + "f1"), renderDot(n1, key + "d"), renderNote(n2, key + "b"), renderFlag(n2 + 4.3, 1, key + "f2"));
     }
     if (unit.type === "dottedEighthRestSixteenth") {
       const r1 = x + w * 0.26,
         n2 = x + w * 0.82;
       return /*#__PURE__*/React.createElement("g", {
         key: key
-      }, renderRest(r1, "eighth", key + "r"), renderDot(r1, key + "d"), renderNote(n2, key + "b"), renderFlag(n2 + 5, 1, key + "f2"));
+      }, renderRest(r1, "eighth", key + "r"), renderDot(r1, key + "d"), renderNote(n2, key + "b"), renderFlag(n2 + 4.3, 1, key + "f2"));
     }
-    if (unit.type === "dottedEighthSixteenthRest") {
-      const n1 = x + w * 0.26,
-        r2 = x + w * 0.82;
-      return /*#__PURE__*/React.createElement("g", {
-        key: key
-      }, renderNote(n1, key + "a"), renderFlag(n1 + 5, 1, key + "f1"), renderDot(n1, key + "d"), renderRest(r2, "sixteenth", key + "r"));
-    }
+    // 점8분음표+16분쉼표(=4분음표와 동일한 타격)도 의미 중복이라 제외
     if (unit.type === "triplet" || unit.type === "triplet2beat") {
       const xs = [0, 1, 2].map(i => x + w * (i + 0.5) / 3);
       return /*#__PURE__*/React.createElement("g", {
         key: key
-      }, xs.map((p, i) => renderNote(p, key + "n" + i)), renderBeam(xs[0] + 5, xs[2] + 5, key + "bm", false), /*#__PURE__*/React.createElement("text", {
-        x: (xs[0] + xs[2]) / 2 + 5,
-        y: staffY - 33,
-        fontSize: "11",
+      }, xs.map((p, i) => renderNote(p, key + "n" + i)), renderBeam(xs[0] + 4.3, xs[2] + 4.3, key + "bm", false), /*#__PURE__*/React.createElement("text", {
+        x: (xs[0] + xs[2]) / 2 + 4.3,
+        y: staffY - 30,
+        fontSize: "10",
         fontWeight: "700",
         fill: C.text3,
         textAnchor: "middle"
@@ -7870,25 +7859,19 @@ const RhythmRow = memo(({
     elements.push(/*#__PURE__*/React.createElement("line", {
       key: `bar${mi}`,
       x1: x + measureGap / 2,
-      y1: staffY - 32,
+      y1: staffY - 28,
       x2: x + measureGap / 2,
-      y2: staffY + 8,
+      y2: staffY + 6,
       stroke: C.text,
-      strokeWidth: mi === measures.length - 1 ? 2.6 : 1.8
+      strokeWidth: mi === measures.length - 1 ? 2.2 : 1.5
     }));
     x += measureGap;
   });
-  return /*#__PURE__*/React.createElement("div", {
+  return /*#__PURE__*/React.createElement("svg", {
+    viewBox: `0 0 ${width} ${H}`,
     style: {
       width: "100%",
-      overflowX: "auto",
-      WebkitOverflowScrolling: "touch"
-    }
-  }, /*#__PURE__*/React.createElement("svg", {
-    viewBox: `0 0 ${width} ${H}`,
-    width: width,
-    height: H,
-    style: {
+      height: "auto",
       display: "block"
     }
   }, /*#__PURE__*/React.createElement("line", {
@@ -7897,8 +7880,8 @@ const RhythmRow = memo(({
     x2: width - 6,
     y2: staffY,
     stroke: C.border,
-    strokeWidth: "1.2"
-  }), elements));
+    strokeWidth: "1"
+  }), elements);
 });
 function ExamPracticeScreen({
   question,
