@@ -1587,16 +1587,17 @@ function unitPool(difficulty) {
   }, sixteenthFromCode("3"), {
     type: "quarterRest",
     beats: 1
-  }, {
-    type: "triplet",
-    beats: 1
   }, sixteenthFromCode("1234")];
   if (difficulty === "easy") return easy;
-  // 보통 = 쉬움 + 16분음표 조합(2,23,234 제외한 12가지, 랜덤)
-  if (difficulty === "medium") return [...easy, "sixteenthRandom", "sixteenthRandom", "sixteenthRandom", "sixteenthRandom" // 등장 비중을 높임
+  const triplet1Beat = {
+    type: "triplet",
+    beats: 1
+  };
+  // 보통 = 쉬움 + 1박 3연음 + 16분음표 조합(2,23,234 제외한 12가지, 랜덤)
+  if (difficulty === "medium") return [...easy, triplet1Beat, "sixteenthRandom", "sixteenthRandom", "sixteenthRandom", "sixteenthRandom" // 등장 비중을 높임
   ];
-  // 어려움 = 쉬움 + 16분음표 15가지 전부(랜덤, 제한 없음) + 2박 3연음
-  return [...easy, "sixteenthRandomAll", "sixteenthRandomAll", "sixteenthRandomAll", "sixteenthRandomAll", {
+  // 어려움 = 쉬움 + 1박 3연음 + 16분음표 15가지 전부(랜덤, 제한 없음) + 2박 3연음
+  return [...easy, triplet1Beat, "sixteenthRandomAll", "sixteenthRandomAll", "sixteenthRandomAll", "sixteenthRandomAll", {
     type: "triplet2beat",
     beats: 2
   }];
