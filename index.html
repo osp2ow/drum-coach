@@ -1470,8 +1470,12 @@ async function deleteAudioTrack(track) {
 /* ── 초견용 랜덤 리듬 생성 (스네어 단선 리듬보, 4/4박자, 16마디 고정) ─── */
 // 각 유닛: {type, beats, positions?} — beats는 1 또는 2(2박3연음만)
 const SIXTEENTH_PATTERNS = ["1", "2", "3", "4", "12", "23", "34", "13", "24", "14", "123", "234", "134", "124", "1234"];
-function pickSixteenthPattern(fullOnly) {
-  const p = fullOnly ? "1234" : SIXTEENTH_PATTERNS[Math.floor(Math.random() * SIXTEENTH_PATTERNS.length)];
+// 보통/어려움 난이도의 무작위 출제에서는 "2","23","234"를 제외 (지정 출제인 sixteenthFromCode는 영향 없음)
+const SIXTEENTH_PATTERNS_RANDOM = SIXTEENTH_PATTERNS.filter(p => !["2", "23", "234"].includes(p));
+function pickSixteenthPattern(mode) {
+  // mode: "full"=항상 1234 / "filtered"=보통용(2,23,234 제외) / "all"=어려움용(15가지 전부)
+  let p;
+  if (mode === "full") p = "1234";else if (mode === "all") p = SIXTEENTH_PATTERNS[Math.floor(Math.random() * SIXTEENTH_PATTERNS.length)];else p = SIXTEENTH_PATTERNS_RANDOM[Math.floor(Math.random() * SIXTEENTH_PATTERNS_RANDOM.length)];
   return {
     type: "sixteenth",
     beats: 1,
@@ -1501,25 +1505,26 @@ function unitPool(difficulty) {
     beats: 1
   }, sixteenthFromCode("1234")];
   if (difficulty === "easy") return easy;
-  // 보통 = 쉬움 + 16분음표 15가지 조합 전부(랜덤)
-  const medium = [...easy, "sixteenthRandom", "sixteenthRandom", "sixteenthRandom", "sixteenthRandom" // 등장 비중을 높임
+  // 보통 = 쉬움 + 16분음표 조합(2,23,234 제외한 12가지, 랜덤)
+  if (difficulty === "medium") return [...easy, "sixteenthRandom", "sixteenthRandom", "sixteenthRandom", "sixteenthRandom" // 등장 비중을 높임
   ];
-  if (difficulty === "medium") return medium;
-  // 어려움 = 보통 + 2박 3연음
-  return [...medium, {
+  // 어려움 = 쉬움 + 16분음표 15가지 전부(랜덤, 제한 없음) + 2박 3연음
+  return [...easy, "sixteenthRandomAll", "sixteenthRandomAll", "sixteenthRandomAll", "sixteenthRandomAll", {
     type: "triplet2beat",
     beats: 2
   }];
 }
 function pickUnit(difficulty, remaining) {
+  const markers = ["sixteenthFull", "sixteenthRandom", "sixteenthRandomAll"];
   const pool = unitPool(difficulty).filter(u => {
-    const beats = u === "sixteenthFull" || u === "sixteenthRandom" ? 1 : u.beats;
+    const beats = markers.includes(u) ? 1 : u.beats;
     return beats <= remaining;
   });
   if (pool.length === 0) return null;
   const pick = pool[Math.floor(Math.random() * pool.length)];
-  if (pick === "sixteenthFull") return pickSixteenthPattern(true);
-  if (pick === "sixteenthRandom") return pickSixteenthPattern(false);
+  if (pick === "sixteenthFull") return pickSixteenthPattern("full");
+  if (pick === "sixteenthRandom") return pickSixteenthPattern("filtered");
+  if (pick === "sixteenthRandomAll") return pickSixteenthPattern("all");
   return pick;
 }
 function generateRhythmMeasure(difficulty) {
@@ -7713,11 +7718,11 @@ const RhythmRow = memo(({
     height: "3.2",
     fill: C.text
   });
-  const stub = (stemX, dir, y, key) => /*#__PURE__*/React.createElement("rect", {
+  const stub = (stemX, dir, y, key, len = 9) => /*#__PURE__*/React.createElement("rect", {
     key: key,
-    x: dir > 0 ? stemX : stemX - 9,
+    x: dir > 0 ? stemX : stemX - len,
     y: y,
-    width: "9",
+    width: len,
     height: "3.2",
     fill: C.text
   });
@@ -7832,10 +7837,10 @@ const RhythmRow = memo(({
     }, restHook((xs[0] + xs[1]) / 2 - 2, key + "r", true), note(xs[3], key + "n", 2));
     if (code === "12") return /*#__PURE__*/React.createElement("g", {
       key: key
-    }, note(xs[0], key + "a"), note(xs[1], key + "b"), beam(stemXs[0], stemXs[1], stemTop, key + "bm"), stub(stemXs[0], 1, stemTop + 5, key + "stub"), dot(xs[1] + 9, key + "d"));
+    }, note(xs[0], key + "a"), note(xs[1], key + "b"), beam(stemXs[0], stemXs[1], stemTop, key + "bm"), stub(stemXs[0], 1, stemTop + 5, key + "stub", 5), dot(xs[1] + 9, key + "d"));
     if (code === "23") return /*#__PURE__*/React.createElement("g", {
       key: key
-    }, rest16(xs[0], key + "r"), note(xs[1], key + "a"), note(xs[2], key + "b"), beam(stemXs[1], stemXs[2], stemTop, key + "bm"));
+    }, rest16(xs[0], key + "r"), note(xs[1], key + "a"), note(xs[2], key + "b"), beam(stemXs[1], stemXs[2], stemTop, key + "bm"), stub(stemXs[1], 1, stemTop + 5, key + "stub", 5));
     if (code === "34") return /*#__PURE__*/React.createElement("g", {
       key: key
     }, restHook((xs[0] + xs[1]) / 2, key + "r"), note(xs[2], key + "a"), note(xs[3], key + "b"), beam(stemXs[2], stemXs[3], stemTop, key + "bm"), beam(stemXs[2], stemXs[3], stemTop + 5, key + "bm2"));
