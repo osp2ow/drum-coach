@@ -1478,37 +1478,35 @@ function pickSixteenthPattern(fullOnly) {
     positions: [1, 2, 3, 4].map(n => p.includes(String(n)))
   };
 }
+// 특정 16분음표 조합을 지정해서 생성 (예: "3" → 1,2번 쉼+3번만 침, "1234" → 4개 다 침)
+function sixteenthFromCode(codeStr) {
+  return {
+    type: "sixteenth",
+    beats: 1,
+    positions: [1, 2, 3, 4].map(n => codeStr.includes(String(n)))
+  };
+}
 function unitPool(difficulty) {
-  const base = [{
+  const easy = [{
     type: "quarter",
-    beats: 1
-  }, {
-    type: "quarterRest",
     beats: 1
   }, {
     type: "eighthPair",
     beats: 1
-  }];
-  if (difficulty === "easy") return [...base, {
-    type: "quarter",
+  }, sixteenthFromCode("3"), {
+    type: "quarterRest",
     beats: 1
-  }];
-  // 주의: "8분음표+8분쉼표"는 타격 시점이 4분음표와 완전히 같아 타악기 리듬에선 의미가 중복되므로 제외
-  const medium = [...base, {
-    type: "eighthRestNote",
-    beats: 1
-  },
-  // 뒷박(업비트)을 치는 진짜 다른 리듬이라 포함
-  "sixteenthFull", {
+  }, {
     type: "triplet",
     beats: 1
-  }];
+  }, sixteenthFromCode("1234")];
+  if (difficulty === "easy") return easy;
+  // 보통 = 쉬움 + 16분음표 15가지 조합 전부(랜덤)
+  const medium = [...easy, "sixteenthRandom", "sixteenthRandom", "sixteenthRandom", "sixteenthRandom" // 등장 비중을 높임
+  ];
   if (difficulty === "medium") return medium;
-  // hard: 모든 조합 포함 (16분음표 15종 전부, 2박3연음 포함)
-  // "점8분음표+16분음표"=16분패턴"14"와, "점8분쉼표+16분음표"=16분패턴"4"와 타격 시점이 완전히 같아 제외(중복)
-  return [...medium, "sixteenthRandom", "sixteenthRandom", "sixteenthRandom", "sixteenthRandom",
-  // 등장 비중을 높임
-  {
+  // 어려움 = 보통 + 2박 3연음
+  return [...medium, {
     type: "triplet2beat",
     beats: 2
   }];
@@ -7673,11 +7671,11 @@ const RhythmRow = memo(({
 }) => {
   const unitW = 46,
     measureGap = 20,
-    staffY = 42,
-    padL = 10;
+    staffY = 50,
+    padL = 10; // staffY를 내려서 2박3연음의 '3' 표시가 잘리지 않게 여유 공간 확보
   const measureW = unitW * 4;
   const width = padL + measures.length * (measureW + measureGap);
-  const H = 84;
+  const H = 92;
   const stemTop = staffY - 27;
 
   // ── 기본 요소 ──
@@ -7792,7 +7790,7 @@ const RhythmRow = memo(({
       strokeLinecap: "round"
     }), /*#__PURE__*/React.createElement("line", {
       x1: cx + 2,
-      y1: y1 + 2,
+      y1: y0 + 2,
       x2: cx - 2,
       y2: staffY + 11,
       stroke: C.text3,
@@ -7831,16 +7829,16 @@ const RhythmRow = memo(({
     }, restHook((xs[0] + xs[1]) / 2, key + "r"), note(xs[2], key + "n", 1));
     if (code === "4") return /*#__PURE__*/React.createElement("g", {
       key: key
-    }, restHook((xs[0] + xs[1]) / 2 - 2, key + "r", true), note(xs[3], key + "n", 1));
+    }, restHook((xs[0] + xs[1]) / 2 - 2, key + "r", true), note(xs[3], key + "n", 2));
     if (code === "12") return /*#__PURE__*/React.createElement("g", {
       key: key
-    }, note(xs[0], key + "a"), note(xs[1], key + "b"), beam(stemXs[0], stemXs[1], stemTop, key + "bm"), restHook((xs[2] + xs[3]) / 2, key + "r"));
+    }, note(xs[0], key + "a"), note(xs[1], key + "b"), beam(stemXs[0], stemXs[1], stemTop, key + "bm"), beam(stemXs[0], stemXs[1], stemTop + 5, key + "bm2"), restHook((xs[2] + xs[3]) / 2, key + "r"));
     if (code === "23") return /*#__PURE__*/React.createElement("g", {
       key: key
-    }, rest16(xs[0], key + "r"), note(xs[1], key + "a"), note(xs[2], key + "b"), beam(stemXs[1], stemXs[2], stemTop, key + "bm"));
+    }, rest16(xs[0], key + "r"), note(xs[1], key + "a"), note(xs[2], key + "b"), beam(stemXs[1], stemXs[2], stemTop, key + "bm"), beam(stemXs[1], stemXs[2], stemTop + 5, key + "bm2"));
     if (code === "34") return /*#__PURE__*/React.createElement("g", {
       key: key
-    }, restHook((xs[0] + xs[1]) / 2, key + "r"), note(xs[2], key + "a"), note(xs[3], key + "b"), beam(stemXs[2], stemXs[3], stemTop, key + "bm"));
+    }, restHook((xs[0] + xs[1]) / 2, key + "r"), note(xs[2], key + "a"), note(xs[3], key + "b"), beam(stemXs[2], stemXs[3], stemTop, key + "bm"), beam(stemXs[2], stemXs[3], stemTop + 5, key + "bm2"));
     if (code === "13") return /*#__PURE__*/React.createElement("g", {
       key: key
     }, note(xs[0], key + "a"), note(xs[2], key + "b"), beam(stemXs[0], stemXs[2], stemTop, key + "bm")); // 8분음표 두개와 동일(홑빔)
