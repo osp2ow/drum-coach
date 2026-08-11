@@ -7864,7 +7864,7 @@ const RhythmRow = memo(({
     }, note(xs[0], key + "a"), note(xs[2], key + "b"), note(xs[3], key + "c"), beam(stemXs[0], stemXs[3], stemTop, key + "bm"), beam(stemXs[2], stemXs[3], stemTop + 5, key + "sub"));
     if (code === "124") return /*#__PURE__*/React.createElement("g", {
       key: key
-    }, note(xs[0], key + "a"), note(xs[1], key + "b"), note(xs[3], key + "c"), beam(stemXs[0], stemXs[3], stemTop, key + "bm"), stub(stemXs[0], 1, stemTop + 5, key + "stub1"), stub(stemXs[3], -1, stemTop + 5, key + "stub2"));
+    }, note(xs[0], key + "a"), note(xs[1], key + "b"), note(xs[3], key + "c"), beam(stemXs[0], stemXs[3], stemTop, key + "bm"), stub(stemXs[0], 1, stemTop + 5, key + "stub1", 5), stub(stemXs[3], -1, stemTop + 5, key + "stub2"));
     if (code === "1234") return /*#__PURE__*/React.createElement("g", {
       key: key
     }, xs.map((p2, i) => note(p2, key + "n" + i)), beam(stemXs[0], stemXs[3], stemTop, key + "bm"), beam(stemXs[0], stemXs[3], stemTop + 5, key + "bm2"));
@@ -8404,6 +8404,14 @@ function ExamPracticeScreen({
     }
   }, /*#__PURE__*/React.createElement("div", {
     style: {
+      height: question.mode === "sightread" ? 176 : 0,
+      display: "flex",
+      flexDirection: "column",
+      alignItems: "center",
+      justifyContent: "center"
+    }
+  }, /*#__PURE__*/React.createElement("div", {
+    style: {
       fontSize: 15,
       color: C.text3,
       marginBottom: 14,
@@ -8416,7 +8424,6 @@ function ExamPracticeScreen({
       height: 120,
       borderRadius: "50%",
       margin: "0 auto",
-      marginBottom: question.mode === "sightread" ? 18 : 0,
       background: `linear-gradient(135deg,${C.accentDim},${C.surface})`,
       border: `3px solid ${C.accent}`,
       display: "flex",
@@ -8431,7 +8438,7 @@ function ExamPracticeScreen({
       color: C.accent,
       fontFamily: "monospace"
     }
-  }, countNum)), question.mode === "sightread" && sightreadRhythm && /*#__PURE__*/React.createElement("div", {
+  }, countNum))), question.mode === "sightread" && sightreadRhythm && /*#__PURE__*/React.createElement("div", {
     style: {
       background: C.surface,
       borderRadius: 16,
@@ -8448,10 +8455,17 @@ function ExamPracticeScreen({
     }
   }, /*#__PURE__*/React.createElement("div", {
     style: {
+      height: question.mode === "sightread" ? 176 : "auto",
+      display: "flex",
+      alignItems: "center",
+      justifyContent: "center",
+      marginBottom: question.mode === "sightread" ? 0 : 28
+    }
+  }, /*#__PURE__*/React.createElement("div", {
+    style: {
       display: "inline-flex",
       alignItems: "center",
       gap: 8,
-      marginBottom: question.mode === "sightread" ? 16 : 28,
       background: C.redDim,
       padding: "7px 18px",
       borderRadius: 99
@@ -8470,7 +8484,7 @@ function ExamPracticeScreen({
       fontWeight: 800,
       color: C.red
     }
-  }, "연주 중")), question.mode === "sightread" && sightreadRhythm && /*#__PURE__*/React.createElement("div", {
+  }, "연주 중"))), question.mode === "sightread" && sightreadRhythm && /*#__PURE__*/React.createElement("div", {
     style: {
       background: C.surface,
       borderRadius: 16,
