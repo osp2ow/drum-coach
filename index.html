@@ -7740,15 +7740,21 @@ const RhythmRow = memo(({
   // 갈고리형 쉼표(8분/16분 등 여러 길이에 공용, dotted면 옆에 점 추가)
   const restHook = (cx, key, dotted) => /*#__PURE__*/React.createElement("g", {
     key: key
-  }, /*#__PURE__*/React.createElement("path", {
-    d: `M ${cx + 2},${staffY - 9} C ${cx - 3},${staffY - 9} ${cx - 3},${staffY - 4} ${cx + 1},${staffY - 2}
-        C ${cx - 4},${staffY - 1} ${cx - 4},${staffY + 4} ${cx + 1},${staffY + 7}`,
+  }, /*#__PURE__*/React.createElement("circle", {
+    cx: cx - 1,
+    cy: staffY - 7,
+    r: "2.8",
+    fill: C.text3
+  }), /*#__PURE__*/React.createElement("line", {
+    x1: cx - 1,
+    y1: staffY - 7,
+    x2: cx + 4,
+    y2: staffY + 8,
     stroke: C.text3,
-    strokeWidth: "2",
-    fill: "none",
+    strokeWidth: "2.2",
     strokeLinecap: "round"
   }), dotted && /*#__PURE__*/React.createElement("circle", {
-    cx: cx + 7,
+    cx: cx + 9,
     cy: staffY,
     r: "1.6",
     fill: C.text3
