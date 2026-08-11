@@ -7741,17 +7741,23 @@ const RhythmRow = memo(({
   const restHook = (cx, key, dotted) => /*#__PURE__*/React.createElement("g", {
     key: key
   }, /*#__PURE__*/React.createElement("circle", {
-    cx: cx - 1,
+    cx: cx - 2,
     cy: staffY - 7,
-    r: "2.8",
+    r: "2.6",
     fill: C.text3
-  }), /*#__PURE__*/React.createElement("line", {
-    x1: cx - 1,
-    y1: staffY - 7,
-    x2: cx + 4,
-    y2: staffY + 8,
+  }), /*#__PURE__*/React.createElement("path", {
+    d: `M ${cx - 2},${staffY - 7} Q ${cx + 4},${staffY - 6} ${cx + 3},${staffY - 1}`,
     stroke: C.text3,
-    strokeWidth: "2.2",
+    strokeWidth: "2",
+    fill: "none",
+    strokeLinecap: "round"
+  }), /*#__PURE__*/React.createElement("line", {
+    x1: cx + 3,
+    y1: staffY - 1,
+    x2: cx - 3,
+    y2: staffY + 9,
+    stroke: C.text3,
+    strokeWidth: "2",
     strokeLinecap: "round"
   }), dotted && /*#__PURE__*/React.createElement("circle", {
     cx: cx + 9,
