@@ -7835,7 +7835,7 @@ const RhythmRow = memo(({
     }, note(xs[0], key + "a"), note(xs[1], key + "b"), beam(stemXs[0], stemXs[1], stemTop, key + "bm"), beam(stemXs[0], stemXs[1], stemTop + 5, key + "bm2"), restHook((xs[2] + xs[3]) / 2, key + "r"));
     if (code === "23") return /*#__PURE__*/React.createElement("g", {
       key: key
-    }, rest16(xs[0], key + "r"), note(xs[1], key + "a"), note(xs[2], key + "b"), beam(stemXs[1], stemXs[2], stemTop, key + "bm"), beam(stemXs[1], stemXs[2], stemTop + 5, key + "bm2"));
+    }, rest16(xs[0], key + "r"), note(xs[1], key + "a"), note(xs[2], key + "b"), beam(stemXs[1], stemXs[2], stemTop, key + "bm"));
     if (code === "34") return /*#__PURE__*/React.createElement("g", {
       key: key
     }, restHook((xs[0] + xs[1]) / 2, key + "r"), note(xs[2], key + "a"), note(xs[3], key + "b"), beam(stemXs[2], stemXs[3], stemTop, key + "bm"), beam(stemXs[2], stemXs[3], stemTop + 5, key + "bm2"));
@@ -7844,10 +7844,10 @@ const RhythmRow = memo(({
     }, note(xs[0], key + "a"), note(xs[2], key + "b"), beam(stemXs[0], stemXs[2], stemTop, key + "bm")); // 8분음표 두개와 동일(홑빔)
     if (code === "14") return /*#__PURE__*/React.createElement("g", {
       key: key
-    }, note(xs[0], key + "a"), note(xs[3], key + "b"), beam(stemXs[0], stemXs[3], stemTop, key + "bm"), dot((xs[1] + xs[2]) / 2 + 2, key + "d"));
+    }, note(xs[0], key + "a"), note(xs[3], key + "b"), beam(stemXs[0], stemXs[3], stemTop, key + "bm"), stub(stemXs[3], -1, stemTop + 5, key + "stub"), dot(xs[0] + 9, key + "d"));
     if (code === "24") return /*#__PURE__*/React.createElement("g", {
       key: key
-    }, rest16(xs[0], key + "r"), note(xs[1], key + "a"), note(xs[3], key + "b"), beam(stemXs[1], stemXs[3], stemTop, key + "bm"), stub(stemXs[1], 1, stemTop + 5, key + "s1"), stub(stemXs[3], -1, stemTop + 5, key + "s2"));
+    }, rest16(xs[0], key + "r"), note(xs[1], key + "a"), note(xs[3], key + "b"), beam(stemXs[1], stemXs[3], stemTop, key + "bm"), stub(stemXs[3], -1, stemTop + 5, key + "stub"));
     if (code === "123") return /*#__PURE__*/React.createElement("g", {
       key: key
     }, note(xs[0], key + "a"), note(xs[1], key + "b"), note(xs[2], key + "c"), beam(stemXs[0], stemXs[2], stemTop, key + "bm"), beam(stemXs[0], stemXs[1], stemTop + 5, key + "sub"), stub(stemXs[2], -1, stemTop + 5, key + "stub"));
