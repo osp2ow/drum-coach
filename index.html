@@ -7765,14 +7765,19 @@ const RhythmRow = memo(({
     r: "1.6",
     fill: C.text3
   }));
-  // 4분쉼표: 지그재그 형태
+  // 4분쉼표: ①오른쪽아래 직선 ②왼쪽아래 직선 ③오른쪽아래 직선 ④아래로 곡선, 총 4단계 지그재그
   const quarterRest = (cx, key) => /*#__PURE__*/React.createElement("path", {
     key: key,
-    d: `M ${cx - 1},${staffY - 10} C ${cx + 4},${staffY - 7} ${cx - 3},${staffY - 4} ${cx + 2},${staffY - 1}
-          C ${cx - 3},${staffY + 2} ${cx + 3},${staffY + 5} ${cx},${staffY + 9}
-          L ${cx - 3},${staffY + 6} C ${cx},${staffY + 3} ${cx - 4},${staffY + 1} ${cx - 1},${staffY - 2}
-          C ${cx + 2},${staffY - 4} ${cx - 4},${staffY - 6} ${cx - 1},${staffY - 10} Z`,
-    fill: C.text3
+    d: `M ${cx - 3},${staffY - 10}
+          L ${cx + 3},${staffY - 3}
+          L ${cx - 3},${staffY + 1}
+          L ${cx + 3},${staffY + 4}
+          Q ${cx + 1},${staffY + 8} ${cx - 2},${staffY + 10}`,
+    stroke: C.text3,
+    strokeWidth: "2.3",
+    fill: "none",
+    strokeLinecap: "round",
+    strokeLinejoin: "round"
   });
 
   // ── 16분음표 15가지 조합: 선생님 참고 악보 그대로 하드코딩 ──
