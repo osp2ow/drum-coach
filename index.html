@@ -1504,17 +1504,11 @@ function unitPool(difficulty) {
     beats: 1
   }];
   if (difficulty === "medium") return medium;
-  // hard: 모든 조합 포함 (16분음표 15종 전부, 점음표, 2박3연음 포함)
-  // "점8분음표+16분쉼표"도 4분음표와 타격 시점이 같아 제외
-  return [...medium, "sixteenthRandom", "sixteenthRandom", "sixteenthRandom",
+  // hard: 모든 조합 포함 (16분음표 15종 전부, 2박3연음 포함)
+  // "점8분음표+16분음표"=16분패턴"14"와, "점8분쉼표+16분음표"=16분패턴"4"와 타격 시점이 완전히 같아 제외(중복)
+  return [...medium, "sixteenthRandom", "sixteenthRandom", "sixteenthRandom", "sixteenthRandom",
   // 등장 비중을 높임
   {
-    type: "dottedEighthSixteenth",
-    beats: 1
-  }, {
-    type: "dottedEighthRestSixteenth",
-    beats: 1
-  }, {
     type: "triplet2beat",
     beats: 2
   }];
@@ -7856,20 +7850,6 @@ const RhythmRow = memo(({
       }, restHook(rx, key + "r"), note(nx, key + "n", 1));
     }
     if (unit.type === "sixteenth") return renderSixteenth(unit, x, w, key);
-    if (unit.type === "dottedEighthSixteenth") {
-      const n1 = x + w * 0.26,
-        n2 = x + w * 0.84;
-      return /*#__PURE__*/React.createElement("g", {
-        key: key
-      }, note(n1, key + "a", 1), dot(n1 + 8, key + "d"), note(n2, key + "b", 1));
-    }
-    if (unit.type === "dottedEighthRestSixteenth") {
-      const r1 = x + w * 0.26,
-        n2 = x + w * 0.84;
-      return /*#__PURE__*/React.createElement("g", {
-        key: key
-      }, restHook(r1, key + "r", true), note(n2, key + "b", 1));
-    }
     if (unit.type === "triplet") {
       const xs = [0, 1, 2].map(i => x + w * (i + 0.5) / 3);
       const sx = xs.map(p => p + 4.6);
