@@ -8008,7 +8008,10 @@ function ExamPracticeScreen({
     if (startedRef.current) return;
     startedRef.current = true;
     unlockSilentAudio(); // 아이폰 무음 모드에서도 소리 나오게
-    if (question.mode === "sightread") enterFullscreen(); // 초견은 전체화면으로 전환해 화면을 최대한 넓게 확보
+    if (question.mode === "sightread") {
+      enterFullscreen(); // 초견은 전체화면으로 전환해 화면을 최대한 넓게 확보
+      setSightreadRhythm(generateRhythm(question.measures || 16, question.difficulty || "easy")); // 큐사인과 동시에 악보 공개
+    }
     setPhase("countIn");
     const ctx = getCtx();
     const countBeats = question.countInBeats || 4;
@@ -8042,10 +8045,6 @@ function ExamPracticeScreen({
             setTimeout(() => {
               setPhase("playing");
               setTimeLeft(dur);
-              // 초견 모드: 카운트인이 끝나는 바로 이 순간에 리듬을 새로 생성해서 공개 (매번 다르게, 미리보기 불가)
-              if (question.mode === "sightread") {
-                setSightreadRhythm(generateRhythm(question.measures || 2, question.difficulty || "easy"));
-              }
               if (question.mode === "mr" && mrRef.current) {
                 mrRef.current.currentTime = 0;
                 mrRef.current.play().catch(() => {});
@@ -8358,22 +8357,25 @@ function ExamPracticeScreen({
     fill: "#fff"
   })), "시작하기")), phase === "countIn" && /*#__PURE__*/React.createElement("div", {
     style: {
+      width: "100%",
+      maxWidth: question.mode === "sightread" ? "min(96vw,1400px)" : 360,
       textAlign: "center"
     }
   }, /*#__PURE__*/React.createElement("div", {
     style: {
       fontSize: 15,
       color: C.text3,
-      marginBottom: 20,
+      marginBottom: 14,
       fontWeight: 700,
       letterSpacing: 0.5
     }
   }, "CUE"), /*#__PURE__*/React.createElement("div", {
     style: {
-      width: 180,
-      height: 180,
+      width: 120,
+      height: 120,
       borderRadius: "50%",
       margin: "0 auto",
+      marginBottom: question.mode === "sightread" ? 18 : 0,
       background: `linear-gradient(135deg,${C.accentDim},${C.surface})`,
       border: `3px solid ${C.accent}`,
       display: "flex",
@@ -8383,15 +8385,24 @@ function ExamPracticeScreen({
     }
   }, /*#__PURE__*/React.createElement("span", {
     style: {
-      fontSize: 88,
+      fontSize: 58,
       fontWeight: 900,
       color: C.accent,
       fontFamily: "monospace"
     }
-  }, countNum))), phase === "playing" && /*#__PURE__*/React.createElement("div", {
+  }, countNum)), question.mode === "sightread" && sightreadRhythm && /*#__PURE__*/React.createElement("div", {
+    style: {
+      background: C.surface,
+      borderRadius: 16,
+      padding: "20px 16px",
+      border: `1px solid ${C.border}`
+    }
+  }, /*#__PURE__*/React.createElement(RhythmNotationSVG, {
+    measures: sightreadRhythm
+  }))), phase === "playing" && /*#__PURE__*/React.createElement("div", {
     style: {
       width: "100%",
-      maxWidth: question.mode === "sightread" ? 520 : 360,
+      maxWidth: question.mode === "sightread" ? "min(96vw,1400px)" : 360,
       textAlign: "center"
     }
   }, /*#__PURE__*/React.createElement("div", {
@@ -8422,7 +8433,7 @@ function ExamPracticeScreen({
     style: {
       background: C.surface,
       borderRadius: 16,
-      padding: "16px 8px",
+      padding: "20px 16px",
       marginBottom: 20,
       border: `1px solid ${C.border}`
     }
