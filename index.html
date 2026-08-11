@@ -8443,11 +8443,17 @@ function ExamPracticeScreen({
       background: C.surface,
       borderRadius: 16,
       padding: "20px 16px",
+      marginBottom: 20,
       border: `1px solid ${C.border}`
     }
   }, /*#__PURE__*/React.createElement(RhythmNotationSVG, {
     measures: sightreadRhythm
-  }))), phase === "playing" && /*#__PURE__*/React.createElement("div", {
+  })), question.mode === "sightread" && /*#__PURE__*/React.createElement("div", {
+    style: {
+      height: 10,
+      visibility: "hidden"
+    }
+  })), phase === "playing" && /*#__PURE__*/React.createElement("div", {
     style: {
       width: "100%",
       maxWidth: question.mode === "sightread" ? "min(96vw,1400px)" : 360,
@@ -8457,6 +8463,7 @@ function ExamPracticeScreen({
     style: {
       height: question.mode === "sightread" ? 176 : "auto",
       display: "flex",
+      flexDirection: "column",
       alignItems: "center",
       justifyContent: "center",
       marginBottom: question.mode === "sightread" ? 0 : 28
@@ -8466,6 +8473,7 @@ function ExamPracticeScreen({
       display: "inline-flex",
       alignItems: "center",
       gap: 8,
+      marginBottom: question.mode === "sightread" ? 10 : 0,
       background: C.redDim,
       padding: "7px 18px",
       borderRadius: 99
@@ -8484,7 +8492,24 @@ function ExamPracticeScreen({
       fontWeight: 800,
       color: C.red
     }
-  }, "연주 중"))), question.mode === "sightread" && sightreadRhythm && /*#__PURE__*/React.createElement("div", {
+  }, "연주 중")), question.mode === "sightread" && /*#__PURE__*/React.createElement("div", {
+    style: {
+      fontSize: 52,
+      fontWeight: 900,
+      color: C.text,
+      fontFamily: "monospace",
+      letterSpacing: -2
+    }
+  }, timeLeft), question.mode !== "sightread" && /*#__PURE__*/React.createElement("div", {
+    style: {
+      fontSize: 80,
+      fontWeight: 900,
+      color: C.text,
+      fontFamily: "monospace",
+      marginTop: 20,
+      letterSpacing: -2
+    }
+  }, timeLeft)), question.mode === "sightread" && sightreadRhythm && /*#__PURE__*/React.createElement("div", {
     style: {
       background: C.surface,
       borderRadius: 16,
@@ -8495,15 +8520,6 @@ function ExamPracticeScreen({
   }, /*#__PURE__*/React.createElement(RhythmNotationSVG, {
     measures: sightreadRhythm
   })), /*#__PURE__*/React.createElement("div", {
-    style: {
-      fontSize: question.mode === "sightread" ? 52 : 80,
-      fontWeight: 900,
-      color: C.text,
-      fontFamily: "monospace",
-      marginBottom: 24,
-      letterSpacing: -2
-    }
-  }, timeLeft), /*#__PURE__*/React.createElement("div", {
     style: {
       background: C.surface,
       borderRadius: 99,
