@@ -7738,33 +7738,36 @@ const RhythmRow = memo(({
   });
 
   // 갈고리형 쉼표(8분/16분 등 여러 길이에 공용, dotted면 옆에 점 추가)
-  const restHook = (cx, key, dotted) => /*#__PURE__*/React.createElement("g", {
-    key: key
-  }, /*#__PURE__*/React.createElement("circle", {
-    cx: cx - 2,
-    cy: staffY - 7,
-    r: "2.6",
-    fill: C.text3
-  }), /*#__PURE__*/React.createElement("path", {
-    d: `M ${cx - 2},${staffY - 7} Q ${cx + 4},${staffY - 6} ${cx + 3},${staffY - 1}`,
-    stroke: C.text3,
-    strokeWidth: "2",
-    fill: "none",
-    strokeLinecap: "round"
-  }), /*#__PURE__*/React.createElement("line", {
-    x1: cx + 3,
-    y1: staffY - 1,
-    x2: cx - 3,
-    y2: staffY + 9,
-    stroke: C.text3,
-    strokeWidth: "2",
-    strokeLinecap: "round"
-  }), dotted && /*#__PURE__*/React.createElement("circle", {
-    cx: cx + 9,
-    cy: staffY,
-    r: "1.6",
-    fill: C.text3
-  }));
+  const restHook = (cx, key, dotted) => {
+    const y0 = staffY - 8; // 머리(원) 높이
+    return /*#__PURE__*/React.createElement("g", {
+      key: key
+    }, /*#__PURE__*/React.createElement("circle", {
+      cx: cx - 3,
+      cy: y0,
+      r: "2.6",
+      fill: C.text3
+    }), /*#__PURE__*/React.createElement("path", {
+      d: `M ${cx - 3},${y0} Q ${cx},${y0 + 7} ${cx + 3},${y0 + 1}`,
+      stroke: C.text3,
+      strokeWidth: "2",
+      fill: "none",
+      strokeLinecap: "round"
+    }), /*#__PURE__*/React.createElement("line", {
+      x1: cx + 3,
+      y1: y0 + 1,
+      x2: cx - 2,
+      y2: y0 + 13,
+      stroke: C.text3,
+      strokeWidth: "2",
+      strokeLinecap: "round"
+    }), dotted && /*#__PURE__*/React.createElement("circle", {
+      cx: cx + 10,
+      cy: staffY,
+      r: "1.6",
+      fill: C.text3
+    }));
+  };
   // 4분쉼표: ①오른쪽아래 직선 ②왼쪽아래 직선 ③오른쪽아래 직선 ④아래로 곡선, 총 4단계 지그재그
   const quarterRest = (cx, key) => /*#__PURE__*/React.createElement("path", {
     key: key,
