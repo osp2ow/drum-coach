@@ -6,6 +6,7 @@
   <meta name="apple-mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
   <meta name="theme-color" content="#151519">
+  <meta name="app-version" content="20260812-01">
   <meta property="og:title" content="Drum Coach">
   <meta property="og:description" content="레슨 이후의 연습을 잇다">
   <title>Drum Coach 🥁</title>
@@ -38,6 +39,38 @@
   </style>
 </head>
 <body>
+  <!-- 홈 화면(standalone) 캐시로 인해 구버전이 계속 보이는 문제 방지: 앱 실행/복귀 시 최신 버전 확인 후 자동 갱신 -->
+  <script>
+  (function() {
+    try {
+      var metaTag = document.querySelector('meta[name="app-version"]');
+      var CURRENT_VERSION = metaTag ? metaTag.content : '';
+      var CHECK_INTERVAL = 60 * 1000; // 최소 이 간격마다만 확인 (너무 잦은 네트워크 요청 방지)
+
+      function checkForUpdate() {
+        var last = Number(sessionStorage.getItem('dc_last_update_check') || 0);
+        if (Date.now() - last < CHECK_INTERVAL) return;
+        sessionStorage.setItem('dc_last_update_check', String(Date.now()));
+        fetch(location.pathname + '?_check=' + Date.now(), { cache: 'no-store' })
+          .then(function(res) { return res.text(); })
+          .then(function(html) {
+            var m = html.match(/<meta name="app-version" content="([^"]+)"/);
+            var latest = m && m[1];
+            if (latest && latest !== CURRENT_VERSION) {
+              // 캐시를 무조건 우회하도록 쿼리스트링을 바꿔 새 URL로 이동
+              location.replace(location.pathname + '?_v=' + latest);
+            }
+          })
+          .catch(function() {});
+      }
+
+      checkForUpdate();
+      document.addEventListener('visibilitychange', function() {
+        if (document.visibilityState === 'visible') checkForUpdate();
+      });
+    } catch (e) {}
+  })();
+  </script>
   <div id="root"></div>
 
   <!-- React 18 -->
