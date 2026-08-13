@@ -6,7 +6,7 @@
   <meta name="apple-mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
   <meta name="theme-color" content="#151519">
-  <meta name="app-version" content="20260812-02">
+  <meta name="app-version" content="20260812-03">
   <meta property="og:title" content="Drum Coach">
   <meta property="og:description" content="레슨 이후의 연습을 잇다">
   <title>Drum Coach 🥁</title>
@@ -7934,6 +7934,10 @@ const RhythmRow = memo(({
   const width = padL + measures.length * (measureW + measureGap);
   const H = 92;
   const stemTop = staffY - 27;
+  const ink = "#1a1a1a",
+    ink2 = "rgba(0,0,0,0.62)",
+    ink3 = "rgba(0,0,0,0.42)",
+    inkBorder = "rgba(0,0,0,0.22)";
 
   // ── 기본 요소 ──
   const note = (cx, key, flags = 0, doubleStroke = false) => /*#__PURE__*/React.createElement("g", {
@@ -7943,21 +7947,21 @@ const RhythmRow = memo(({
     cy: staffY,
     rx: "5",
     ry: "4",
-    fill: C.text,
+    fill: ink,
     transform: `rotate(-18 ${cx} ${staffY})`
   }), /*#__PURE__*/React.createElement("line", {
     x1: cx + 4.6,
     y1: staffY - 1,
     x2: cx + 4.6,
     y2: stemTop,
-    stroke: C.text,
+    stroke: ink,
     strokeWidth: "1.7"
   }), Array.from({
     length: flags
   }).map((_, i) => /*#__PURE__*/React.createElement("path", {
     key: i,
     d: `M ${cx + 4.6},${stemTop + i * 6} q 7,3 5,10`,
-    stroke: C.text,
+    stroke: ink,
     strokeWidth: "1.7",
     fill: "none",
     strokeLinecap: "round"
@@ -7966,14 +7970,14 @@ const RhythmRow = memo(({
     y1: stemTop + 13,
     x2: cx + 8,
     y2: stemTop + 9,
-    stroke: C.text,
+    stroke: ink,
     strokeWidth: "1.8"
   }), /*#__PURE__*/React.createElement("line", {
     x1: cx + 1.5,
     y1: stemTop + 18,
     x2: cx + 8,
     y2: stemTop + 14,
-    stroke: C.text,
+    stroke: ink,
     strokeWidth: "1.8"
   })));
   // 슬러(연결 곡선): 빔으로 안 묶인 두 음표 사이를 아래쪽 곡선으로 이어줌
@@ -7983,7 +7987,7 @@ const RhythmRow = memo(({
     return /*#__PURE__*/React.createElement("path", {
       key: key,
       d: `M ${x1},${endY} Q ${(x1 + x2) / 2},${midY} ${x2},${endY}`,
-      stroke: C.text2,
+      stroke: ink2,
       strokeWidth: "1.5",
       fill: "none",
       strokeLinecap: "round"
@@ -7995,7 +7999,7 @@ const RhythmRow = memo(({
     y: y,
     width: Math.max(2, x2 - x1),
     height: "3.2",
-    fill: C.text
+    fill: ink
   });
   const stub = (stemX, dir, y, key, len = 9) => /*#__PURE__*/React.createElement("rect", {
     key: key,
@@ -8003,14 +8007,14 @@ const RhythmRow = memo(({
     y: y,
     width: len,
     height: "3.2",
-    fill: C.text
+    fill: ink
   });
   const dot = (cx, key) => /*#__PURE__*/React.createElement("circle", {
     key: key,
     cx: cx,
     cy: staffY - 1,
     r: "1.7",
-    fill: C.text
+    fill: ink
   });
 
   // 갈고리형 쉼표(8분/16분 등 여러 길이에 공용, dotted면 옆에 점 추가)
@@ -8022,10 +8026,10 @@ const RhythmRow = memo(({
       cx: cx - 3,
       cy: y0,
       r: "2.6",
-      fill: C.text3
+      fill: ink3
     }), /*#__PURE__*/React.createElement("path", {
       d: `M ${cx - 3},${y0} Q ${cx},${y0 + 7} ${cx + 3},${y0 + 1}`,
-      stroke: C.text3,
+      stroke: ink3,
       strokeWidth: "2",
       fill: "none",
       strokeLinecap: "round"
@@ -8034,14 +8038,14 @@ const RhythmRow = memo(({
       y1: y0 + 1,
       x2: cx - 2,
       y2: y0 + 13,
-      stroke: C.text3,
+      stroke: ink3,
       strokeWidth: "2",
       strokeLinecap: "round"
     }), dotted && /*#__PURE__*/React.createElement("circle", {
       cx: cx + 10,
       cy: staffY,
       r: "1.6",
-      fill: C.text3
+      fill: ink3
     }));
   };
   // 16분쉼표: 8분쉼표(머리+곡선)를 위아래로 두 번 겹치고, 공용 꼬리 하나로 마무리
@@ -8054,10 +8058,10 @@ const RhythmRow = memo(({
       cx: cx - 3,
       cy: y0,
       r: "2.3",
-      fill: C.text3
+      fill: ink3
     }), /*#__PURE__*/React.createElement("path", {
       d: `M ${cx - 3},${y0} Q ${cx},${y0 + 5} ${cx + 2},${y0 + 2}`,
-      stroke: C.text3,
+      stroke: ink3,
       strokeWidth: "1.8",
       fill: "none",
       strokeLinecap: "round"
@@ -8065,10 +8069,10 @@ const RhythmRow = memo(({
       cx: cx - 3,
       cy: y1,
       r: "2.3",
-      fill: C.text3
+      fill: ink3
     }), /*#__PURE__*/React.createElement("path", {
       d: `M ${cx - 3},${y1} Q ${cx},${y1 + 5} ${cx + 2},${y1 + 2}`,
-      stroke: C.text3,
+      stroke: ink3,
       strokeWidth: "1.8",
       fill: "none",
       strokeLinecap: "round"
@@ -8077,7 +8081,7 @@ const RhythmRow = memo(({
       y1: y0 + 2,
       x2: cx - 2,
       y2: staffY + 11,
-      stroke: C.text3,
+      stroke: ink3,
       strokeWidth: "1.8",
       strokeLinecap: "round"
     }));
@@ -8090,7 +8094,7 @@ const RhythmRow = memo(({
           L ${cx - 3},${staffY + 1}
           L ${cx + 3},${staffY + 4}
           Q ${cx + 1},${staffY + 8} ${cx - 2},${staffY + 10}`,
-    stroke: C.text3,
+    stroke: ink3,
     strokeWidth: "2.3",
     fill: "none",
     strokeLinecap: "round",
@@ -8182,7 +8186,7 @@ const RhythmRow = memo(({
         fontSize: "12",
         fontStyle: "italic",
         fontWeight: "700",
-        fill: C.text2,
+        fill: ink2,
         textAnchor: "middle"
       }, "3"));
     }
@@ -8196,21 +8200,21 @@ const RhythmRow = memo(({
         y1: bracketY,
         x2: xs[2] + 4.6,
         y2: bracketY,
-        stroke: C.text2,
+        stroke: ink2,
         strokeWidth: "1.3"
       }), /*#__PURE__*/React.createElement("line", {
         x1: xs[0] + 4.6,
         y1: bracketY,
         x2: xs[0] + 4.6,
         y2: bracketY + 5,
-        stroke: C.text2,
+        stroke: ink2,
         strokeWidth: "1.3"
       }), /*#__PURE__*/React.createElement("line", {
         x1: xs[2] + 4.6,
         y1: bracketY,
         x2: xs[2] + 4.6,
         y2: bracketY + 5,
-        stroke: C.text2,
+        stroke: ink2,
         strokeWidth: "1.3"
       }), /*#__PURE__*/React.createElement("text", {
         x: (xs[0] + xs[2]) / 2 + 4.6,
@@ -8218,7 +8222,7 @@ const RhythmRow = memo(({
         fontSize: "12",
         fontStyle: "italic",
         fontWeight: "700",
-        fill: C.text2,
+        fill: ink2,
         textAnchor: "middle"
       }, "3"));
     }
@@ -8249,12 +8253,18 @@ const RhythmRow = memo(({
       y1: staffY - 30,
       x2: x + measureGap / 2,
       y2: staffY + 8,
-      stroke: C.text,
+      stroke: ink,
       strokeWidth: mi === measures.length - 1 ? 2.2 : 1.5
     }));
     x += measureGap;
   });
-  return /*#__PURE__*/React.createElement("svg", {
+  return /*#__PURE__*/React.createElement("div", {
+    style: {
+      background: "#fff",
+      borderRadius: 10,
+      padding: "10px 6px"
+    }
+  }, /*#__PURE__*/React.createElement("svg", {
     viewBox: `0 0 ${width} ${H}`,
     style: {
       width: "100%",
@@ -8266,9 +8276,9 @@ const RhythmRow = memo(({
     y1: staffY,
     x2: width - 6,
     y2: staffY,
-    stroke: C.border,
+    stroke: inkBorder,
     strokeWidth: "1"
-  }), elements);
+  }), elements));
 });
 function ExamPracticeScreen({
   question,
