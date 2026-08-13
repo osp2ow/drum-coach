@@ -6,7 +6,7 @@
   <meta name="apple-mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
   <meta name="theme-color" content="#151519">
-  <meta name="app-version" content="20260812-03">
+  <meta name="app-version" content="20260812-04">
   <meta property="og:title" content="Drum Coach">
   <meta property="og:description" content="레슨 이후의 연습을 잇다">
   <title>Drum Coach 🥁</title>
@@ -2311,10 +2311,12 @@ const PageHeader = memo(({
     border: "none",
     color: C.accent,
     cursor: "pointer",
-    fontSize: 13,
+    fontSize: 16,
+    fontWeight: 700,
     fontFamily: "inherit",
     marginBottom: 8,
-    padding: 0,
+    marginLeft: -6,
+    padding: "6px 6px",
     display: "block"
   }
 }, "← ", backLabel || "뒤로"), /*#__PURE__*/React.createElement("div", {
@@ -9047,11 +9049,13 @@ function ExamListScreen({
   user,
   hideHeader,
   onPracticeQuestion,
-  onStartExam
+  onStartExam,
+  modeTab,
+  onModeTabChange
 }) {
   const [questions, setQuestions] = useState(null);
   const [editing, setEditing] = useState(null);
-  const [modeTab, setModeTab] = useState("metronome"); // metronome | mr | none
+  const setModeTab = onModeTabChange;
   const isTeacher = user?.role === "teacher";
   useEffect(() => {
     loadExamQuestions().then(setQuestions);
@@ -9292,6 +9296,7 @@ function PracticeToolsScreen({
   const [openTrack, setOpenTrack] = useState(null);
   const [practiceQ, setPracticeQ] = useState(null);
   const [examQuestions, setExamQuestions] = useState(null); // 모의고사용 전체 문제 목록
+  const [examModeTab, setExamModeTab] = useState("metronome"); // 입시모의고사 내부 서브탭(메트로놈/MR/무반주/초견) - 문제 연습 후 뒤로가도 유지되도록 상위로 보관
 
   // 음원(속도조절)/개별문제연습/모의고사 중 하나가 열리면
   // "연습 도구" 헤더/서브탭 없이 완전한 전체화면으로 전환
@@ -9368,7 +9373,9 @@ function PracticeToolsScreen({
     user: user,
     hideHeader: true,
     onPracticeQuestion: setPracticeQ,
-    onStartExam: setExamQuestions
+    onStartExam: setExamQuestions,
+    modeTab: examModeTab,
+    onModeTabChange: setExamModeTab
   }));
 }
 
