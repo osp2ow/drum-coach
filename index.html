@@ -6,7 +6,7 @@
   <meta name="apple-mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
   <meta name="theme-color" content="#151519">
-  <meta name="app-version" content="20260812-04">
+  <meta name="app-version" content="20260812-05">
   <meta property="og:title" content="Drum Coach">
   <meta property="og:description" content="레슨 이후의 연습을 잇다">
   <title>Drum Coach 🥁</title>
@@ -111,6 +111,17 @@
       // 오프라인 지원 (인터넷 끊겨도 기본 동작)
       _fsdb.enablePersistence({synchronizeTabs: true}).catch(function(){});
       console.log("✅ Firebase connected:", FIREBASE_CONFIG.projectId);
+
+      // iOS에서 전체화면 전환/백그라운드 후 복귀 시 Firestore 연결이
+      // 끊긴 채로 멈춰서 데이터 요청이 영원히 "불러오는 중"에 걸리는 문제 방지:
+      // 화면이 다시 보일 때마다 네트워크 연결을 강제로 재수립한다.
+      document.addEventListener('visibilitychange', function() {
+        if (document.visibilityState === 'visible' && _fsdb) {
+          _fsdb.disableNetwork().then(function() {
+            return _fsdb.enableNetwork();
+          }).catch(function(){});
+        }
+      });
     } catch(e) {
       console.error("Firebase init error:", e);
     }
@@ -1695,6 +1706,11 @@ function generateRhythm(measures, difficulty, includeDoubleStroke) {
   return Array.from({
     length: total
   }, (_, i) => generateRhythmMeasure(difficulty, dsIndices.has(i)));
+}
+// Firestore 요청이 (특히 아이폰에서 전체화면 전환/백그라운드 복귀 후) 응답 없이
+// 멈춰버려서 화면이 "불러오는 중"에 영원히 머무는 걸 방지하기 위한 타임아웃 래퍼
+function withTimeout(promise, ms, fallback) {
+  return Promise.race([promise, new Promise(resolve => setTimeout(() => resolve(fallback), ms))]);
 }
 async function loadExamQuestions() {
   const fs = typeof _fsdb !== "undefined" ? _fsdb : null;
@@ -9058,7 +9074,7 @@ function ExamListScreen({
   const setModeTab = onModeTabChange;
   const isTeacher = user?.role === "teacher";
   useEffect(() => {
-    loadExamQuestions().then(setQuestions);
+    withTimeout(loadExamQuestions(), 12000, []).then(setQuestions);
   }, []);
   const handleAdd = () => {
     const nw = {
@@ -11955,7 +11971,7 @@ function MusicScreen({
 
   // 지연 로딩: 처음엔 현재 탭(추천곡)만 로드, 다른 탭은 처음 클릭할 때 로드
   useEffect(() => {
-    loadMusicData().then(d => {
+    withTimeout(loadMusicData(), 12000, null).then(d => {
       setSongs(d?.songs || DEFAULT_SONGS);
       setRhythms(d?.rhythms || DEFAULT_RHYTHMS);
       const order = d?.genreOrder || Object.keys(GENRE_LABELS);
@@ -11970,7 +11986,7 @@ function MusicScreen({
   // 드러머 탭을 처음 열 때만 로드
   useEffect(() => {
     if (tab === "drummers" && drummers === null) {
-      loadDrummerData().then(async d => {
+      withTimeout(loadDrummerData(), 12000, null).then(async d => {
         // 저장된 드러머가 없으면(첫 실행) 기본값으로 초기화
         const hasData = d && d.drummers && Object.keys(d.drummers).length > 0;
         const finalDrummers = hasData ? d.drummers : DEFAULT_DRUMMERS;
@@ -12001,7 +12017,7 @@ function MusicScreen({
   // 입시정보 탭을 처음 열 때만 로드
   useEffect(() => {
     if (tab === "schools" && schools === null) {
-      loadSchoolData().then(d => setSchools(d || DEFAULT_SCHOOLS));
+      withTimeout(loadSchoolData(), 12000, null).then(d => setSchools(d || DEFAULT_SCHOOLS));
     }
   }, [tab]);
 
