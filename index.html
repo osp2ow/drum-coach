@@ -6,7 +6,7 @@
   <meta name="apple-mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
   <meta name="theme-color" content="#151519">
-  <meta name="app-version" content="20260812-10">
+  <meta name="app-version" content="20260812-11">
   <meta property="og:title" content="Drum Coach">
   <meta property="og:description" content="레슨 이후의 연습을 잇다">
   <title>Drum Coach 🥁</title>
@@ -7212,6 +7212,17 @@ function AudioPlayerScreen({
       audioRef.current.play().catch(() => {});
     }
   };
+  useEffect(() => {
+    const onKeyDown = e => {
+      if (e.code !== "Space" && e.key !== " ") return;
+      const tag = document.activeElement?.tagName;
+      if (tag === "INPUT" || tag === "TEXTAREA" || document.activeElement?.isContentEditable) return;
+      e.preventDefault();
+      togglePlay();
+    };
+    window.addEventListener("keydown", onKeyDown);
+    return () => window.removeEventListener("keydown", onKeyDown);
+  }, [playing]);
   const seekToRatio = ratio => {
     if (!audioRef.current || !duration) return;
     const r = Math.min(1, Math.max(0, ratio));
