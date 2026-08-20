@@ -6,7 +6,7 @@
   <meta name="apple-mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
   <meta name="theme-color" content="#151519">
-  <meta name="app-version" content="20260812-05">
+  <meta name="app-version" content="20260812-06">
   <meta property="og:title" content="Drum Coach">
   <meta property="og:description" content="레슨 이후의 연습을 잇다">
   <title>Drum Coach 🥁</title>
@@ -7182,6 +7182,8 @@ function AudioPlayerScreen({
   const [curTime, setCurTime] = useState(0);
   const [duration, setDuration] = useState(0);
   const [dragging, setDragging] = useState(false);
+  const [bufferReady, setBufferReady] = useState(false);
+  const [waiting, setWaiting] = useState(false);
   // 구간 반복(A-B repeat)
   const [repeatA, setRepeatA] = useState(null);
   const [repeatB, setRepeatB] = useState(null);
@@ -7294,11 +7296,15 @@ function AudioPlayerScreen({
   }, /*#__PURE__*/React.createElement("audio", {
     ref: audioRef,
     src: track.url,
+    preload: "auto",
     onLoadedMetadata: () => {
       setDuration(audioRef.current?.duration || 0);
       applyPitchSetting(audioRef.current);
       if (audioRef.current) audioRef.current.playbackRate = speed;
     },
+    onCanPlay: () => setBufferReady(true),
+    onWaiting: () => setWaiting(true),
+    onPlaying: () => setWaiting(false),
     onTimeUpdate: () => {
       if (!dragging) setCurTime(audioRef.current?.currentTime || 0);
     },
@@ -7318,7 +7324,26 @@ function AudioPlayerScreen({
       marginTop: 12,
       marginBottom: 16
     }
-  }, /*#__PURE__*/React.createElement("button", {
+  }, (!bufferReady || waiting) && /*#__PURE__*/React.createElement("div", {
+    style: {
+      fontSize: 12,
+      color: C.text3,
+      marginBottom: 8,
+      display: "flex",
+      alignItems: "center",
+      gap: 6
+    }
+  }, /*#__PURE__*/React.createElement("span", {
+    style: {
+      width: 12,
+      height: 12,
+      border: `2px solid ${C.text3}`,
+      borderTopColor: "transparent",
+      borderRadius: "50%",
+      display: "inline-block",
+      animation: "dcspin 0.7s linear infinite"
+    }
+  }), "불러오는 중..."), /*#__PURE__*/React.createElement("button", {
     onClick: togglePlay,
     style: {
       width: 76,
