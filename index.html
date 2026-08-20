@@ -6,7 +6,7 @@
   <meta name="apple-mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
   <meta name="theme-color" content="#151519">
-  <meta name="app-version" content="20260812-09">
+  <meta name="app-version" content="20260812-10">
   <meta property="og:title" content="Drum Coach">
   <meta property="og:description" content="레슨 이후의 연습을 잇다">
   <title>Drum Coach 🥁</title>
@@ -3180,7 +3180,7 @@ const TimerForm = memo(({
       fontSize: 72,
       fontWeight: 900,
       color: C.text,
-      fontFamily: "monospace",
+      fontFamily: '"SF Mono", SFMono-Regular, Menlo, Consolas, monospace',
       letterSpacing: "-3px",
       marginBottom: 24
     }
@@ -3983,7 +3983,7 @@ function TeacherStudents({
       fontWeight: 900,
       letterSpacing: 8,
       color: C.accent,
-      fontFamily: "monospace"
+      fontFamily: '"SF Mono", SFMono-Regular, Menlo, Consolas, monospace'
     }
   }, genCode), /*#__PURE__*/React.createElement("div", {
     style: {
@@ -4857,7 +4857,7 @@ function ReviewScreen({
       fontSize: 12,
       color: C.accent,
       fontWeight: 700,
-      fontFamily: "monospace"
+      fontFamily: '"SF Mono", SFMono-Regular, Menlo, Consolas, monospace'
     }
   }, fmtTime(s.durationSeconds))))), /*#__PURE__*/React.createElement(Card, {
     style: {
@@ -5930,7 +5930,7 @@ function AssignmentDetail({
       fontSize: 12,
       fontWeight: 700,
       color: C.accent,
-      fontFamily: "monospace"
+      fontFamily: '"SF Mono", SFMono-Regular, Menlo, Consolas, monospace'
     }
   }, fmtTime(s.durationSeconds)), /*#__PURE__*/React.createElement("button", {
     onClick: () => setConfirm({
@@ -6488,7 +6488,7 @@ function MetronomeScreen({
       letterSpacing: "-4px",
       lineHeight: 1,
       marginBottom: 4,
-      fontFamily: "monospace"
+      fontFamily: '"SF Mono", SFMono-Regular, Menlo, Consolas, monospace'
     }
   }, bpm), /*#__PURE__*/React.createElement("div", {
     style: {
@@ -7693,7 +7693,7 @@ function AudioPlayerScreen({
       fontSize: 36,
       fontWeight: 900,
       color: C.accent,
-      fontFamily: "monospace",
+      fontFamily: '"SF Mono", SFMono-Regular, Menlo, Consolas, monospace',
       minWidth: 108
     }
   }, speed.toFixed(2), /*#__PURE__*/React.createElement("span", {
@@ -8749,7 +8749,7 @@ function ExamPracticeScreen({
       fontSize: 22,
       fontWeight: 900,
       color: C.accent,
-      fontFamily: "monospace"
+      fontFamily: '"SF Mono", SFMono-Regular, Menlo, Consolas, monospace'
     }
   }, question.bpm), /*#__PURE__*/React.createElement("div", {
     style: {
@@ -8769,7 +8769,7 @@ function ExamPracticeScreen({
       fontSize: 22,
       fontWeight: 900,
       color: C.text3,
-      fontFamily: "monospace"
+      fontFamily: '"SF Mono", SFMono-Regular, Menlo, Consolas, monospace'
     }
   }, question.bpm), /*#__PURE__*/React.createElement("div", {
     style: {
@@ -8789,7 +8789,7 @@ function ExamPracticeScreen({
       fontSize: 22,
       fontWeight: 900,
       color: C.accent,
-      fontFamily: "monospace"
+      fontFamily: '"SF Mono", SFMono-Regular, Menlo, Consolas, monospace'
     }
   }, question.bpm), /*#__PURE__*/React.createElement("div", {
     style: {
@@ -8809,7 +8809,7 @@ function ExamPracticeScreen({
       fontSize: 22,
       fontWeight: 900,
       color: C.text,
-      fontFamily: "monospace"
+      fontFamily: '"SF Mono", SFMono-Regular, Menlo, Consolas, monospace'
     }
   }, question.measures || 2), /*#__PURE__*/React.createElement("div", {
     style: {
@@ -8829,7 +8829,7 @@ function ExamPracticeScreen({
       fontSize: 22,
       fontWeight: 900,
       color: C.text,
-      fontFamily: "monospace"
+      fontFamily: '"SF Mono", SFMono-Regular, Menlo, Consolas, monospace'
     }
   }, question.duration), /*#__PURE__*/React.createElement("div", {
     style: {
@@ -8849,7 +8849,7 @@ function ExamPracticeScreen({
       fontSize: 22,
       fontWeight: 900,
       color: C.text,
-      fontFamily: "monospace"
+      fontFamily: '"SF Mono", SFMono-Regular, Menlo, Consolas, monospace'
     }
   }, question.countInBeats), /*#__PURE__*/React.createElement("div", {
     style: {
@@ -8925,7 +8925,7 @@ function ExamPracticeScreen({
       fontSize: 58,
       fontWeight: 900,
       color: C.accent,
-      fontFamily: "monospace"
+      fontFamily: '"SF Mono", SFMono-Regular, Menlo, Consolas, monospace'
     }
   }, countNum))), question.mode === "sightread" && sightreadRhythm && /*#__PURE__*/React.createElement("div", {
     style: {
@@ -8986,7 +8986,7 @@ function ExamPracticeScreen({
       fontSize: 52,
       fontWeight: 900,
       color: C.text,
-      fontFamily: "monospace",
+      fontFamily: '"SF Mono", SFMono-Regular, Menlo, Consolas, monospace',
       letterSpacing: -2
     }
   }, timeLeft), question.mode !== "sightread" && /*#__PURE__*/React.createElement("div", {
@@ -8994,7 +8994,7 @@ function ExamPracticeScreen({
       fontSize: 80,
       fontWeight: 900,
       color: C.text,
-      fontFamily: "monospace",
+      fontFamily: '"SF Mono", SFMono-Regular, Menlo, Consolas, monospace',
       marginTop: 20,
       letterSpacing: -2
     }
@@ -10218,7 +10218,7 @@ const RoutinePracticeModal = memo(({
       fontSize: 70,
       fontWeight: 900,
       color: C.text,
-      fontFamily: "monospace",
+      fontFamily: '"SF Mono", SFMono-Regular, Menlo, Consolas, monospace',
       letterSpacing: "-3px",
       marginBottom: 4
     }
@@ -10317,7 +10317,7 @@ const RoutinePracticeModal = memo(({
       fontSize: 38,
       fontWeight: 900,
       color: metrOn ? C.accent : C.text3,
-      fontFamily: "monospace",
+      fontFamily: '"SF Mono", SFMono-Regular, Menlo, Consolas, monospace',
       marginBottom: 8
     }
   }, bpm, " ", /*#__PURE__*/React.createElement("span", {
@@ -10437,7 +10437,7 @@ const RoutinePracticeModal = memo(({
       fontSize: 56,
       fontWeight: 900,
       color: C.accent,
-      fontFamily: "monospace",
+      fontFamily: '"SF Mono", SFMono-Regular, Menlo, Consolas, monospace',
       minWidth: 90,
       textAlign: "center"
     }
@@ -13641,7 +13641,7 @@ const DataBackupCard = memo(({
       padding: "10px 12px",
       color: C.text,
       fontSize: 16,
-      fontFamily: "monospace",
+      fontFamily: '"SF Mono", SFMono-Regular, Menlo, Consolas, monospace',
       resize: "vertical",
       boxSizing: "border-box",
       outline: "none",
@@ -13680,7 +13680,7 @@ const DataBackupCard = memo(({
       padding: "10px 12px",
       color: C.text,
       fontSize: 16,
-      fontFamily: "monospace",
+      fontFamily: '"SF Mono", SFMono-Regular, Menlo, Consolas, monospace',
       resize: "vertical",
       boxSizing: "border-box",
       outline: "none"
@@ -14598,7 +14598,7 @@ function App() {
       stepTitle: {fontSize:14, fontWeight:700, color:"#F0F0F5", marginBottom:4},
       stepDesc: {fontSize:12, color:"rgba(240,240,245,0.5)", lineHeight:1.6},
       code: {display:"block", marginTop:6, background:"#151519", borderRadius:8,
-             padding:"8px 12px", fontSize:11, fontFamily:"monospace", color:"#FF9F0A",
+             padding:"8px 12px", fontSize:11, fontFamily:'"SF Mono", SFMono-Regular, Menlo, Consolas, monospace', color:"#FF9F0A",
              wordBreak:"break-all"},
       rule: {marginTop:18, padding:"12px 14px", background:"rgba(10,132,255,0.12)",
              borderRadius:10, border:"1px solid rgba(10,132,255,0.25)",
@@ -14646,7 +14646,7 @@ function App() {
         }),
         React.createElement("div", {style: s.rule},
           "📋  Firestore 보안 규칙 (테스트 모드 기본값)\n",
-          React.createElement("code", {style:{fontFamily:"monospace", fontSize:11}},
+          React.createElement("code", {style:{fontFamily:'"SF Mono", SFMono-Regular, Menlo, Consolas, monospace', fontSize:11}},
             "allow read, write: if true;"
           ),
           "\n실사용 전에 보안 규칙을 설정하는 것을 권장합니다."
