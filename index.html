@@ -6,7 +6,7 @@
   <meta name="apple-mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
   <meta name="theme-color" content="#151519">
-  <meta name="app-version" content="20260812-06">
+  <meta name="app-version" content="20260812-08">
   <meta property="og:title" content="Drum Coach">
   <meta property="og:description" content="레슨 이후의 연습을 잇다">
   <title>Drum Coach 🥁</title>
@@ -7249,6 +7249,15 @@ function AudioPlayerScreen({
       window.removeEventListener("touchend", onUp);
     };
   }, [dragging, duration]);
+  const seekBy = deltaSec => {
+    if (!audioRef.current || !duration) return;
+    const newT = Math.min(duration, Math.max(0, curTime + deltaSec));
+    audioRef.current.currentTime = newT;
+    setCurTime(newT);
+  };
+  const stepSpeed = delta => {
+    setSpeed(s => Math.min(1.5, Math.max(0.5, +(s + delta).toFixed(2))));
+  };
   const setPointA = () => {
     const t = curTime;
     setRepeatA(repeatB != null ? Math.min(t, repeatB) : t);
@@ -7321,14 +7330,48 @@ function AudioPlayerScreen({
       display: "flex",
       flexDirection: "column",
       alignItems: "center",
-      marginTop: 12,
-      marginBottom: 16
+      marginTop: 4,
+      marginBottom: 22
     }
-  }, (!bufferReady || waiting) && /*#__PURE__*/React.createElement("div", {
+  }, /*#__PURE__*/React.createElement("div", {
+    style: {
+      width: 168,
+      height: 168,
+      maxWidth: "60vw",
+      maxHeight: "60vw",
+      borderRadius: 24,
+      background: `linear-gradient(135deg, ${C.accent}, #FF8A5C)`,
+      display: "flex",
+      alignItems: "center",
+      justifyContent: "center",
+      marginBottom: 18,
+      boxShadow: `0 8px 24px ${C.accent}40`
+    }
+  }, /*#__PURE__*/React.createElement("svg", {
+    width: "64",
+    height: "64",
+    viewBox: "0 0 24 24",
+    fill: "none"
+  }, /*#__PURE__*/React.createElement("path", {
+    d: "M9 18V5l12-2v13M9 18a3 3 0 1 1-6 0 3 3 0 0 1 6 0zm12-2a3 3 0 1 1-6 0 3 3 0 0 1 6 0z",
+    stroke: "#fff",
+    strokeWidth: "1.6",
+    strokeLinecap: "round",
+    strokeLinejoin: "round"
+  }))), /*#__PURE__*/React.createElement("div", {
+    style: {
+      fontSize: 18,
+      fontWeight: 800,
+      color: C.text,
+      textAlign: "center",
+      marginBottom: 6,
+      wordBreak: "break-word",
+      padding: "0 8px"
+    }
+  }, track.name), (!bufferReady || waiting) && /*#__PURE__*/React.createElement("div", {
     style: {
       fontSize: 12,
       color: C.text3,
-      marginBottom: 8,
       display: "flex",
       alignItems: "center",
       gap: 6
@@ -7343,53 +7386,7 @@ function AudioPlayerScreen({
       display: "inline-block",
       animation: "dcspin 0.7s linear infinite"
     }
-  }), "불러오는 중..."), /*#__PURE__*/React.createElement("button", {
-    onClick: togglePlay,
-    style: {
-      width: 76,
-      height: 76,
-      borderRadius: "50%",
-      border: "none",
-      cursor: "pointer",
-      background: C.accent,
-      color: "#fff",
-      marginBottom: 16,
-      display: "flex",
-      alignItems: "center",
-      justifyContent: "center",
-      boxShadow: `0 4px 16px ${C.accent}55`
-    }
-  }, playing ? /*#__PURE__*/React.createElement("svg", {
-    width: "28",
-    height: "28",
-    viewBox: "0 0 24 24",
-    fill: "none"
-  }, /*#__PURE__*/React.createElement("rect", {
-    x: "6",
-    y: "5",
-    width: "4.5",
-    height: "14",
-    rx: "1.2",
-    fill: "#fff"
-  }), /*#__PURE__*/React.createElement("rect", {
-    x: "13.5",
-    y: "5",
-    width: "4.5",
-    height: "14",
-    rx: "1.2",
-    fill: "#fff"
-  })) : /*#__PURE__*/React.createElement("svg", {
-    width: "28",
-    height: "28",
-    viewBox: "0 0 24 24",
-    fill: "none",
-    style: {
-      marginLeft: 3
-    }
-  }, /*#__PURE__*/React.createElement("path", {
-    d: "M7 4.5v15a1 1 0 0 0 1.53.85l12-7.5a1 1 0 0 0 0-1.7l-12-7.5A1 1 0 0 0 7 4.5z",
-    fill: "#fff"
-  }))), /*#__PURE__*/React.createElement("div", {
+  }), "불러오는 중...")), /*#__PURE__*/React.createElement("div", {
     ref: timelineRef,
     onMouseDown: handleTimelineDown,
     onTouchStart: handleTimelineDown,
@@ -7466,9 +7463,132 @@ function AudioPlayerScreen({
       justifyContent: "space-between",
       width: "100%",
       fontSize: 11,
-      color: C.text3
+      color: C.text3,
+      marginBottom: 20
     }
-  }, /*#__PURE__*/React.createElement("span", null, ft(curTime)), /*#__PURE__*/React.createElement("span", null, ft(duration)))), /*#__PURE__*/React.createElement("div", {
+  }, /*#__PURE__*/React.createElement("span", null, ft(curTime)), /*#__PURE__*/React.createElement("span", null, ft(duration))), /*#__PURE__*/React.createElement("div", {
+    style: {
+      display: "flex",
+      alignItems: "center",
+      justifyContent: "center",
+      gap: 10
+    }
+  }, /*#__PURE__*/React.createElement("button", {
+    onClick: () => seekBy(-10),
+    style: {
+      width: 46,
+      height: 46,
+      borderRadius: "50%",
+      border: "none",
+      cursor: "pointer",
+      background: C.card,
+      color: C.text2,
+      fontFamily: "inherit",
+      fontSize: 11,
+      fontWeight: 700,
+      display: "flex",
+      alignItems: "center",
+      justifyContent: "center"
+    }
+  }, "-10"), /*#__PURE__*/React.createElement("button", {
+    onClick: () => seekBy(-5),
+    style: {
+      width: 40,
+      height: 40,
+      borderRadius: "50%",
+      border: "none",
+      cursor: "pointer",
+      background: C.card,
+      color: C.text2,
+      fontFamily: "inherit",
+      fontSize: 11,
+      fontWeight: 700,
+      display: "flex",
+      alignItems: "center",
+      justifyContent: "center"
+    }
+  }, "-5"), /*#__PURE__*/React.createElement("button", {
+    onClick: togglePlay,
+    style: {
+      width: 68,
+      height: 68,
+      borderRadius: "50%",
+      border: "none",
+      cursor: "pointer",
+      background: C.accent,
+      color: "#fff",
+      margin: "0 4px",
+      display: "flex",
+      alignItems: "center",
+      justifyContent: "center",
+      boxShadow: `0 4px 16px ${C.accent}55`,
+      flexShrink: 0
+    }
+  }, playing ? /*#__PURE__*/React.createElement("svg", {
+    width: "26",
+    height: "26",
+    viewBox: "0 0 24 24",
+    fill: "none"
+  }, /*#__PURE__*/React.createElement("rect", {
+    x: "6",
+    y: "5",
+    width: "4.5",
+    height: "14",
+    rx: "1.2",
+    fill: "#fff"
+  }), /*#__PURE__*/React.createElement("rect", {
+    x: "13.5",
+    y: "5",
+    width: "4.5",
+    height: "14",
+    rx: "1.2",
+    fill: "#fff"
+  })) : /*#__PURE__*/React.createElement("svg", {
+    width: "26",
+    height: "26",
+    viewBox: "0 0 24 24",
+    fill: "none",
+    style: {
+      marginLeft: 3
+    }
+  }, /*#__PURE__*/React.createElement("path", {
+    d: "M7 4.5v15a1 1 0 0 0 1.53.85l12-7.5a1 1 0 0 0 0-1.7l-12-7.5A1 1 0 0 0 7 4.5z",
+    fill: "#fff"
+  }))), /*#__PURE__*/React.createElement("button", {
+    onClick: () => seekBy(5),
+    style: {
+      width: 40,
+      height: 40,
+      borderRadius: "50%",
+      border: "none",
+      cursor: "pointer",
+      background: C.card,
+      color: C.text2,
+      fontFamily: "inherit",
+      fontSize: 11,
+      fontWeight: 700,
+      display: "flex",
+      alignItems: "center",
+      justifyContent: "center"
+    }
+  }, "+5"), /*#__PURE__*/React.createElement("button", {
+    onClick: () => seekBy(10),
+    style: {
+      width: 46,
+      height: 46,
+      borderRadius: "50%",
+      border: "none",
+      cursor: "pointer",
+      background: C.card,
+      color: C.text2,
+      fontFamily: "inherit",
+      fontSize: 11,
+      fontWeight: 700,
+      display: "flex",
+      alignItems: "center",
+      justifyContent: "center"
+    }
+  }, "+10")), /*#__PURE__*/React.createElement("div", {
     style: {
       background: C.surface,
       borderRadius: 14,
@@ -7553,18 +7673,57 @@ function AudioPlayerScreen({
     }
   }, /*#__PURE__*/React.createElement("div", {
     style: {
+      display: "flex",
+      alignItems: "center",
+      justifyContent: "center",
+      gap: 14,
+      marginBottom: 10
+    }
+  }, /*#__PURE__*/React.createElement("button", {
+    onClick: () => stepSpeed(-0.05),
+    style: {
+      width: 40,
+      height: 40,
+      borderRadius: "50%",
+      border: "none",
+      cursor: "pointer",
+      background: C.card,
+      color: C.text2,
+      fontFamily: "inherit",
+      fontSize: 12,
+      fontWeight: 800,
+      flexShrink: 0
+    }
+  }, "-0.05"), /*#__PURE__*/React.createElement("div", {
+    style: {
       textAlign: "center",
       fontSize: 36,
       fontWeight: 900,
       color: C.accent,
       fontFamily: "monospace",
-      marginBottom: 10
+      minWidth: 108
     }
   }, speed.toFixed(2), /*#__PURE__*/React.createElement("span", {
     style: {
       fontSize: 15
     }
-  }, "x")), /*#__PURE__*/React.createElement("input", {
+  }, "x")), /*#__PURE__*/React.createElement("button", {
+    onClick: () => stepSpeed(0.05),
+    style: {
+      minWidth: 52,
+      height: 36,
+      padding: "0 10px",
+      borderRadius: 18,
+      border: "none",
+      cursor: "pointer",
+      background: C.card,
+      color: C.text2,
+      fontFamily: "inherit",
+      fontSize: 12,
+      fontWeight: 800,
+      flexShrink: 0
+    }
+  }, "+0.05")), /*#__PURE__*/React.createElement("input", {
     type: "range",
     min: "0.5",
     max: "1.5",
